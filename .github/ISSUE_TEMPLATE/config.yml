@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Qoder Sites 部署约束与迁移排期
+    url: https://github.com/borg23/Novara/issues/17
+    about: 截止前的开发范围与顺序以此 issue 为准；能力边界见 docs/sites.md。

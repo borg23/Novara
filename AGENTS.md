@@ -41,6 +41,8 @@ npm run dev            # http://localhost:3000
 - 改动走分支 + PR，`main` 不接受直接 push。
 - 分支前缀：`feat/`、`fix/`、`docs/`、`migrate/`。
 - commit 用 Conventional Commits 描述中文内容，关联 issue 用 `(Closes #N)`；一条 commit 只关闭一条可独立验证的 issue。
+- 新 issue 用 `.github/ISSUE_TEMPLATE/` 的模板：一个 issue 只装一个可独立验证的工作单元，关闭前须在评论里附达成证据。
+- `bug` 标签只表示已复现的缺陷；尚未复现的风险改用「功能与改动」模板并在标题加 `[预登记]`。
 - 新接口放在 `src/app/api/<资源>/route.ts`，参数校验留在 route 函数内，数据访问只经 `src/lib/db.ts` 导出的 `getDb()`。
 - UI 新代码进 `src/components/`，页面壳保持薄壳，不要把业务逻辑写回 `page.tsx`。
 

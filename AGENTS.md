@@ -1,6 +1,6 @@
 # AGENTS.md
 
-面向编码代理与新加入开发者的仓库约定。给人看的产品说明见 [README.md](README.md)；部署到 Qoder Sites 的硬约束与迁移顺序见 [docs/sites.md](docs/sites.md)。
+面向编码代理与新加入开发者的仓库约定。给人看的产品说明见 [README.md](README.md)。部署到 Qoder Sites 的三份文档各有分工：[docs/sites.md](docs/sites.md) 是能力边界与实测记录，[docs/sites-api.md](docs/sites-api.md) 是 Function 与前端的接口契约，[docs/sites-schema.sql](docs/sites-schema.sql) 是目标库结构。
 
 ## 项目定位
 
@@ -35,6 +35,7 @@ npm run dev            # http://localhost:3000
 | 生产启动 | `npm start` | 可用 |
 | 测试 | 无 | 仓库没有测试框架，也没有测试用例。**不要臆造 `npm test`** |
 | Lint | 无 | 未配置 ESLint / Prettier，也没有配置文件 |
+| Function 类型检查 | `deno check functions/index.ts` | 仅用于部署形态的 Edge Function；本机 Deno 2.9.8 已就绪。**`npm run build` 不覆盖 Function** |
 
 ## 工程规范
 
@@ -52,8 +53,11 @@ npm run dev            # http://localhost:3000
 - 除 `auth` 下三条路由外，每个 API handler 的第一件事是 `await getSessionUser()`，为空返回 `unauthorized()`（401）。
 - SQL 一律用 `prepare()` 占位符传参，不拼接用户输入。
 - 不修改、不提交 `data/`、`.env`、`.env.local`；它们已在 `.gitignore` 中，禁止解除忽略。
-- 口令哈希格式是 `scrypt` 的 `salt:hash`，会话表只存令牌的 SHA-256 摘要（`sessions.token_hash`）。更换算法或哈希长度会让已注册账号与会话全部失效，除迁移方案明确要求外不要改动。
+- 口令与会话（**仅本地 Next 形态**）：哈希是 `scrypt` 的 `salt:hash`，会话表只存令牌的 SHA-256 摘要（`sessions.token_hash`）。更换算法或哈希长度会让已注册账号与会话全部失效。部署到 Qoder Sites 的形态**不建口令、不建会话表**，身份来自平台注入上下文——两套模型并存是刻意分叉，见 `docs/sites.md`。
 - 会话 Cookie 名 `novara_session`，属性为 HttpOnly + SameSite=Lax + `SESSION_DAYS` 有效期；放宽这些属性属于安全回退，需在 PR 里单独说明。
+- **部署形态的 owner 只能来自服务端注入的平台上下文或已解析的 app 身份**，客户端传入的任何用户 id 一律忽略。
+- **禁止按 email / 用户名 / 显示名自动关联账户**，唯一匹配路径是 `users.qoder_user_id` 精确相等（同类缺陷见 Keycloak CVE-2026-97175）。
+- 部署形态的路由必须**剥掉路径第一段再匹配**：Function 实际收到的是 `/app-<部署哈希>/...`，禁止硬编码 `app`。需要绝对 URL 时读站点设置的 `APP_ORIGIN`，不得用 `request.url` 的 host。
 - 不在本仓库引入新的运行时依赖去"顺手优化"；依赖变更只允许服务于交付目标本身。
 - `data/` 下是本地运行期数据，不提交、不上传、不作为对外截图或演示素材。
 
@@ -63,8 +67,9 @@ npm run dev            # http://localhost:3000
 
 1. `npm run build` 通过。
 2. 浏览器手测以下两条不变量，并把截图附在 PR 或 issue 评论里：
-   - 未登录访问 `/homework`、`/courses`、`/gpa`、`/focus` 任一页跳转 `/login`；
+   - 未登录访问 `/homework`、`/courses`、`/gpa`、`/focus` 任一页跳转 `/login`（部署形态下改为：匿名只能读到只读样例且写操作被拒，见 `docs/sites-api.md`）；
    - 两个账号各自注册后，作业 / 课程 / 成绩 / 面板配置互不可见。
 3. 涉及新页面、新接口或新环境变量时，README 对应小节同步更新。
+4. 改动 Edge Function 时 `deno check functions/index.ts` 通过——`npm run build` 不覆盖 Function。
 
 本仓库没有自动化测试与 CI，第 2 步是唯一的回归防线。缺少这两项证据的 PR 视为未完成。

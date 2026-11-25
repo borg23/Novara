@@ -21,25 +21,19 @@
 
 -- ===== 业务表（8 张，与现状一一对应）=====
 
+-- 身份方案（#26 / 契约「认证与身份」）：平台 Qoder 上下文即凭证，users 只保存应用侧记录。
+-- 口令列、sessions 表、auth_limiter 表本期**不建**：自建身份提供方在主流架构文档中被列为反模式，
+-- 而平台已提供 IdP。赛后做学校平台化 / 客户端时再按 expand 方式加回。
 CREATE TABLE app.users (
-  id            uuid PRIMARY KEY,
-  username      text NOT NULL UNIQUE,
+  id            uuid PRIMARY KEY,          -- app 内部全局标识；所有业务表的 owner 就是它
+  qoder_user_id text UNIQUE,               -- 平台身份绑定；JIT 建号的幂等依据
   display_name  text NOT NULL,
-  -- 认证方案为「自建账号」时需要以下三列；若采用平台身份，本表连同 sessions / auth_limiter 一并去掉。
-  password_salt text,
-  password_hash text,
-  password_iterations integer,
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE app.sessions (
-  token_digest  text PRIMARY KEY,          -- 现状列名 token_hash，语义同为 SHA-256 摘要
-  user_id       uuid NOT NULL REFERENCES app.users (id) ON DELETE CASCADE,
-  created_at    timestamptz NOT NULL DEFAULT now(),   -- 新增列，现状无签发时间
-  expires_at    timestamptz NOT NULL,
-  revoked_at    timestamptz                 -- 新增列：现状登出是直接 DELETE，无法审计与幂等撤销
-);
-CREATE INDEX sessions_user_idx ON app.sessions (user_id);
+-- owner 列保持 uuid，不改成 text。理由修正：owner 存的是 app 自己的 users.id（uuid），
+-- 平台 user_id 只出现在 users.qoder_user_id 这一列，因此「身份方案变化要改表」的担心不成立；
+-- 换成 text 反而丢掉类型校验、外键可比性与索引效率。#19 变更记录里那句「owner 统一 text」作废。
 
 CREATE TABLE app.courses (
   id         uuid PRIMARY KEY,
@@ -132,23 +126,20 @@ CREATE TABLE app.widget_configs (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- ===== 认证为「自建账号」时额外需要（若走平台身份则整段删除）=====
+-- ===== 本期不建的表 =====
 
--- 固定窗口限流，唯一主键用于并发安全的原子判定。
-CREATE TABLE app.auth_limiter (
-  key               text PRIMARY KEY,
-  window_started_at timestamptz NOT NULL,
-  attempt_count     integer NOT NULL
-);
+-- app.sessions（令牌摘要 / 过期 / 撤销）与 app.auth_limiter（固定窗口限流）属于自建口令形态。
+-- 身份改走平台上下文后两者不需要；若日后确实要口令登录，按 expand 新增，不动现有表。
 
 -- ===== 遗留问题（审批前需明确，不悄悄带过）=====
 
 -- 1. 聚合无处落地：链式客户端不提供 SUM / GROUP BY。契约「已定 2」已选择「Function 读有界行集后
 --    内存聚合」，因此本草案**不加汇总表**；触发条件（单用户 >5000 行或响应体接近上限）写在契约里，
 --    届时按 expand 方式补一张按天汇总表，不动现有表。
--- 2. 只增不减的行：sessions 过期行、auth_limiter 历史窗口，以及 course_slots 的残留批次
---    （补偿式替换在插入成功、删除失败时留下的重复行）都需要保留/清理策略。现状 SQLite 同样没有清理，
---    不是迁移新引入的问题，但持续使用后必须处理；重复槽位对用户可见，清理按 (course_id, 非当前批次) 判定。
+-- 2. 只增不减的行：`course_slots` 的残留批次（补偿式替换在插入成功、删除失败时留下的重复行）需要清理
+--    策略。自建口令形态下的 sessions / auth_limiter 增长项随该形态取消而消失。现状 SQLite 同样没有
+--    清理逻辑，不是迁移新引入的问题，但持续使用后必须处理；重复槽位对用户可见，清理按
+--    (course_id, 非当前批次) 判定。
 -- 3. 外键是否生效：平台侧是否强制启用 RLS 与外键约束需在 #19 实测确认；若外键不生效，
 --    ON DELETE CASCADE 的隔离与清理语义必须由 Function 显式补偿。
 -- 4. 约束先于提示：courses (user_id, name) UNIQUE 必须先于「重名报逐行错误」的前端提示上线，

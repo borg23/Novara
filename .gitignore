@@ -2,6 +2,7 @@ node_modules/
 .next/
 out/
 data/
+dev/.data.json
 .env
 .env.local
 *.tsbuildinfo

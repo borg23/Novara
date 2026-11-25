@@ -1,11 +1,11 @@
-# Sites 侧 API 契约（待 #18 评审）
+# Sites 侧 API 契约（v2 · 身份方案已并入）
 
 对应 issue #18。这份文档是 Function 与前端唯一共同依赖的接口约定：**契约改动即两个 PR 同时改**，不允许某一侧先动。
 
 现状依据是 `src/app/api/**/route.ts` 的 18 个文件逐个读出来的，不是设计构想。每条都标了它是「等价搬迁」还是「新增」，「新增」是现在没有、静态化后必须补的能力。
 
-- 状态：契约条目已齐，5 处行为决策按工程最佳实践落定（见文末「已定」），评审通过后即转定稿；仍待实测确认的能力见「仍需决策 / 待实测」。
-- 前缀：`/functions/v1/app`（下文省略），全部同源、`credentials: 'same-origin'`。
+- 状态：契约条目已齐；5 处行为决策按工程最佳实践落定（见「已定」）；身份方案改为平台绑定后已重写「认证与身份」小节。评审通过后转定稿。
+- 前缀：`/functions/v1/app`（下文省略），全部同源、`credentials: 'same-origin'`。Function 侧看到的实际路径形态见「通用约定 · 路由匹配」。
 - 命名空间：`/api` 是平台保留路径，因此 `/api/*` → 业务子路径一对一改名，不改变层级语义。
 
 ## 通用约定
@@ -18,17 +18,31 @@
 | 状态码 | 400 输入无效 / 401 未登录或会话过期 / 403 身份上下文无效 / 404 资源不属于本用户或路径未知 / 405 方法不支持 / 409 唯一冲突 / 502 上游失败 / 503 依赖不可用 | 现状只有 400/401/404/409/502；403、405、503 是 Function 路由表必须自己补的（Next 会代答 405） |
 | 列表默认排序 | 保持现状 SQL 的 `ORDER BY` 语义，不在迁移期顺手调整 | 面板与作业页的顺序感是用户已习惯的行为 |
 | 方法约束 | GET 不得改状态；写方法需显式白名单 | 平台文档要求 |
+| **路由匹配** | 先剥掉路径第一段再匹配业务子路径。**禁止硬编码 `app`**，也禁止按 `/functions/v1/app` 整段前缀匹配 | 实测（#27）：浏览器请求 `/functions/v1/app/transport`，Function 侧 `path_seen` 是 `/app-<32位hex>/transport`——函数名段被替换为**含部署哈希的物理名，每次部署可能变**，后缀保留 |
+| **绝对 URL** | 需要公网 origin 时一律读站点设置的 `APP_ORIGIN`，不得由 `request.url` 拼接 | 实测（#27）：Function 看到的 host 是 `22.0.35.50:9998`（内网地址） |
 
 ## 认证与身份
 
-| 子路径 | 方法 | 状态 | 请求 | 成功返回 | 关键校验与错误 |
-| --- | --- | --- | --- | --- | --- |
-| `/auth/register` | POST | 等价搬迁 | `{username, password, displayName?}` | `201`/`200` `{id, username, displayName}` | 用户名 `/^[\w\u4e00-\u9fa5]{2,20}$/`，否则 400；密码 ≥6 位否则 400；重名 409 `用户名已被占用`；注册同时创建一条 `widget_configs` 记录并签发会话 |
-| `/auth/login` | POST | 等价搬迁 | `{username, password}` | `{id, username, displayName}` + `Set-Cookie` | 用户不存在或口令不符一律 401 `用户名或密码错误`，不区分（现状即统一提示） |
-| `/auth/logout` | POST | 等价搬迁 | 无 body | `{ok:true}` + 清除会话 Cookie | 撤销落库在前，清 Cookie 在后；重复调用幂等 |
-| `/auth/me` | GET | **新增** | 无 | `{id, username, displayName}` 或 401 | 替代现在 `layout.tsx` 的 `getSessionUser()` 与 5 个页面的 `requireUser()`。前端在未登录时自行导航到登录页 |
+本期**不做自建口令**：身份来自平台注入的 Qoder 上下文，但用户记录与业务数据仍由本库持有（`users` 表在，可解绑、可导出）。`/auth/register`、`/auth/login`、`/auth/logout` 三条**不迁移**——本地 Next 版本保留它们直到前端改造完成，属已知分叉，见文末。
 
-> 会话形态（Cookie 名、`__Host-` 前缀、有效期、口令派生算法）取决于认证方案决策，见本文末「仍需决策 / 待实测」。本表只约定行为，不约定 Cookie 细节。
+| 子路径 | 方法 | 状态 | 请求 | 成功返回 | 关键规则 |
+| --- | --- | --- | --- | --- | --- |
+| `/auth/session` | POST | **新增** | 无 | `{id, displayName}` | 登录回跳后调用。读服务端注入上下文 → 按 `users.qoder_user_id` 查 → 未命中即 JIT 建号。幂等依据是该列的 `UNIQUE`，用 `insertIfAbsent`；若返回空说明并发已命中，改为**再读一次**而不是重试写。新用户同时插入默认 `widget_configs` 行（现状注册流程的等价行为） |
+| `/auth/me` | GET | **新增** | 无 | 已登录 `{id, displayName, readOnly:false}`；匿名 `{readOnly:true}` 且 **200** | 替代 `layout.tsx` 的 `getSessionUser()` 与 5 个页面的 `requireUser()`。匿名不返 401，前端据此渲染只读横幅与登录入口，而不是跳登录页 |
+
+**匿名与写保护**
+
+- 无上下文时，业务 **GET** 一律返回公开的只读样例 owner 数据，200 且响应带 `"readOnly": true`。
+- 无上下文时，业务**写方法**（POST / PATCH / PUT / DELETE）一律 401 `{"error":"登录后才能编辑"}`。
+- 401（未登录）与 403（上下文格式非法 `invalid_user_context`）界面必须区分：后者**不得**提示用户重新登录。
+
+**安全规则（不可协商）**
+
+- **owner 只能来自服务端注入上下文或已解析的 app 身份**；客户端传入的任何用户 id 一律忽略。
+- **禁止按 email / 用户名 / 显示名自动关联既有账户**，唯一匹配路径是 `users.qoder_user_id` 精确相等。同类缺陷见 Keycloak CVE-2026-97175。
+- 浏览器 `GET /__qoder_auth/me` 只可用于界面展示，**不得作为凭证**参与任何服务端判定。
+
+> 实测依据（#27）：登录态 `context → {"sdk_verdict":"accepted","logged_in":true,"user_id_length":36}`；匿名态 `→ {"sdk_verdict":"absent","logged_in":false}`。**是缺失而不是无效**，因此上面的只读分支判定可靠。
 
 ## 课程与课表
 
@@ -89,10 +103,15 @@
 4. **`/courses/{id}/slots` 改为补偿式替换**，请求形状不变（仍是不带 id 的整个数组，前端无需改）：先为该课程插入打上批次标记（`course_slots.batch_id` 可空列）的全部新槽位，插入成功后再删除该课程不在此批次内的旧槽位。任一步失败的后果是**多出重复行而不是丢课表**；重试同一载荷时先清掉自己上一次的残留批次再重新插入；仍失败返回 503 并让前端保留原载荷，不自动重放。这是无事务环境下唯一不把用户数据置于丢失风险的顺序。
 5. **两个批量导入必须带 `Idempotency-Key`**（一次用户提交生成一次，重试沿用同一个）：`/assignments/import` 与 `PUT /gpa/upload`。配合第 1 条的唯一约束，用 `insertIfAbsent` 让重复提交落到同一行。响应丢失后前端只做**显式重试**——平台明确不重试写。
 
-## 仍需决策 / 待实测（阻塞项，不能靠猜实现）
+## 仍需实测（阻塞项，不能靠猜实现）
 
-- **认证方案未定**：自建账号或平台身份。它决定 `/auth/register`、`/auth/login`、`/auth/logout`、`users` 的口令三列、`sessions`、`auth_limiter` 是否存在。本契约按「自建账号形态」书写；若改走平台身份，则 `/auth/*` 全部由平台 `/__qoder_auth/*` 承担、`/auth/me` 改为读平台身份上下文，其余业务接口不受影响。
 - **`function_backend` 客户端的能力面**：`or` / `in` / 范围比较 / 显式列裁剪是否在范例演示之外可用，必须在 #20 开工前实测拿到返回值确认。本文所有过滤条件（`today` / `overdue` / 日期范围）都押在这项能力上。
 - **平台身份路径的隔离性**：身份上下文由网关注入、SDK 只校验格式不校验签名；是否已封堵 Provider 直连与跨租户路径需单独验证，未验证前不得按「已隔离」上线。
-- **配额**：`sites_total` 与 `backend_sites` 的 `used/limit` 只能在真实 `prepare_site` 报错时取得。
+- **配额**：`sites_total` 与 `backend_sites` 的 `used/limit` 只能在真实 `prepare_site` 报错时取得。#27 探针全程未触发报错，因此两个上限仍未知；且探针只申请 functions 却自动带上了 storage。
 - **外部调用放行**：`open-meteo` 与高德接口从 Function 侧发起是否可达，需在部署环境实测；本地通不代表线上通。
+
+## 已知分叉（本地 vs 部署形态）
+
+- 本地 Next 仍是 `scrypt + novara_session Cookie + sessions 表`；部署形态走平台身份，**不建口令、不建会话表**。两套身份模型并存是本期刻意取舍，代价是本地无法验证绑定路径——需要 `dev/` 里的身份 fixture，且 fixture 头**不得**进生产端点。
+- `/auth/*` 语义因此不同：本地有 `login` / `register` / `logout`，线上只有 `session` 与 `me`。#21 前端改造完成后本地口令分支去留由队长定：保留 = 可离线开发与演示；删除 = 单一模型。
+- **一条实测修正**：Cookie 在未开启 `forwardApplicationCredentials` 时就已经到达 Function 原始 header（#27 `app_cookie_visible:true`）。也就是说"部署形态做不了自建口令"是**错的**——不做口令的理由是范围与维护成本，不是能力受限。

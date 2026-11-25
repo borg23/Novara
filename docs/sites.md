@@ -71,13 +71,22 @@
 
 数据库迁移走 expand-and-contract：先加兼容表与可选列、保留线上版本，再发布使用它们的 Function，验证通过后才处理删除与权限收紧。失败的发布不构成回滚迁移或删除数据的理由。
 
-## 五、未决项
+## 五、决策与待实测
 
-- **认证方案**：自建账号在插件里有完整范例（`assets/application-auth/password/`，注册 / 登录 / 数据库会话 / 固定窗口限流），但它依赖 `createSiteContext(request, { forwardApplicationCredentials: true })`，文档明确要求**部署前确认目标 Worker 具备该能力**，旧版本会静默丢弃凭证。另一条路是使用平台注入的身份上下文，代价是注册与登录页不再是本项目实现。
+**已定**
+
+- **身份方案**：平台 Qoder 上下文作为凭证，**用户记录与业务数据仍由本库 `app.users` 持有**（可解绑、可导出、可停用）。本期不建口令、不建会话表与限流表。理由：自建身份提供方在主流架构文档中被列为反模式，平台已提供 IdP，不属「别无选择」；同时避免引入「按 email / 名称自动关联账户」这类账号接管风险面。
+- **不做口令不等于做不到**：#27 实测显示应用 Cookie 在**未开启** `forwardApplicationCredentials` 时就已到达 Function 原始 header。所以这条决策的依据是范围与维护成本，不是能力受限——记录在此，免得后人误以为平台不支持。
+
+**待实测（不能靠猜实现）**
+
 - **`function_backend` 查询客户端的能力面**：官方范例只演示了 `select` / `eq` / `order` / `limit` / `insert` / `insertIfAbsent` / `update` / `delete`。面板与 GPA 需要的 `or` / `in` / 范围比较**未经证实，必须实测**，不能按 Supabase 全集假设。
-- **没有事务**：文档明确多次 SDK 调用不是一个事务，也不提供 Function 侧事务 API。成绩单批量导入（按课程名逐行 upsert）需要按幂等键重新设计，不能假设原子性。
+- **没有事务**：文档明确多次 SDK 调用不是一个事务，也不提供 Function 侧事务 API。批量导入与课表替换都按补偿式与幂等键设计（见契约「已定」）。
+- **后端模型必须显式选**：#27 探针只申请 functions，平台却返回 `database_access_model:"legacy"` 并附带 storage。而 legacy **不能原地切换**——正式站第一步要 `ensure_backend(database + functions, databaseAccessModel:"function_backend")` 并回读确认，选错只能换站点重配。
+- **平台身份的隔离性**：SDK 只校验格式不校验签名；Provider 直连、备用入口、跨租户路径是否已封堵需单独验证，未验证前不得按「已隔离」上线。
+- **配额数值仍未知**：探针全程未触发 `sites_quota_exceeded`，`sites_total` / `backend_sites` 的 `used/limit` 只能等正式站 prepare 时报错取得。
 - **部署账号**：站点 owner 就是执行发布的账号，后续改名、可见性与删除都在该账号下。多账号分别部署等于配额翻倍，但作品帖只能挂一个链接，其余站点仍需独立保持公开可访问。
-- **前端形态**：插件自带 `templates/react-starter`（Vite + React + Tailwind v4）作为框架应用的官方起点；保留 Next.js 只做静态导出也可以，但需要把 server component 的 Cookie 与 redirect 用法全部下掉。该选择尚未落定。
+- **前端形态**：插件自带 `templates/react-starter`（Vite + React + Tailwind v4）作为框架应用的官方起点；保留 Next.js 只做静态导出也可以，但需要把 server component 的 Cookie 与 redirect 用法全部下掉。**这是唯一还阻塞全部实现 PR 的决策。**
 
 ## 六、外部硬约束
 
@@ -85,3 +94,21 @@
 - 开发与部署均需由 Qoder 完成，并在帖中说明使用过程，尽量多附截图凭证。
 - 全部成员须在截止前完成天池实名认证与阿里云大学生认证，否则取消获奖资格。
 - 作品介绍需覆盖：自我介绍 / 作品是什么 / 为什么做 / 怎么用（5 步以内）/ 用 Qoder 做出来的过程。
+- 三人天池实名与阿里云大学生认证**均已完成**（2026-11-25 确认）。
+
+## 七、部署环境实测记录
+
+### 2026-11-25 · 探针站 #27（`auth-probe`，只含 functions + 静态页）
+
+| 关注点 | 实测结果 | 对实现的影响 |
+| --- | --- | --- |
+| Function 收到的路径 | `/functions/v1/app/transport` → `path_seen = /app-<32位hex>/transport` | 函数名段被替换为**含部署哈希的物理名**、后缀保留。路由必须剥第一段，禁止硬编码 `app` |
+| Function 看到的 host | `22.0.35.50:9998` | 内网地址。绝对 URL 一律读站点设置的 `APP_ORIGIN` |
+| 登录态身份上下文 | `sdk_verdict:"accepted"`，`user_id` 长度 36，`has_org_id:false` | 平台身份路径可用，#26 前提成立 |
+| 匿名请求 | `sdk_verdict:"absent"`、`logged_in:false`，**200 不是 403** | 只读分支判定可靠 |
+| 应用 Cookie | `app_cookie_visible:true`（未开启 `forwardApplicationCredentials`） | 推翻「默认会剥掉 Cookie」的文档措辞对本场景的适用性 |
+| 未知 action | `404 {"error":"not_found"}` | 路由表的 404 分支在线上生效 |
+| 私有站点 | 全部路径含静态首页 → `401 {"code":"sites_gateway_login_required"}` | 作品**必须设为公开访问**，否则评委只会看到这一行 JSON |
+| 后端分配 | `capabilities:["functions","storage"]`、`database_access_model:"legacy"` | 见「五」：正式站要显式选 `function_backend`，legacy 不可原地切换 |
+| 配额 | 全程无 `sites_quota_exceeded` | 两个上限仍未知；探针已使名下站点 3 → 4，且很可能消耗了一个后端名额 |
+| 本地检查 | `deno check functions/index.ts` exit=0（Deno 2.9.8，装在 `D:\Programs\Deno`） | Function 有提交前类型检查；`npm run build` 只覆盖前端，二者不可互替 |

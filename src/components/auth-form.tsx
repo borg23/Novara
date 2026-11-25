@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -18,7 +19,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch(`/api/auth/${isLogin ? "login" : "register"}`, {
+      const res = await apiFetch(`/auth/${isLogin ? "login" : "register"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password, displayName }),

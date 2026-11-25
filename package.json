@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "dev:function": "deno run --allow-net=127.0.0.1:8000 --allow-read --allow-write dev/local.ts",
+    "dev:web": "vite --config web/vite.config.mts",
+    "build:web": "tsc -p web && vite build --config web/vite.config.mts"
   },
   "dependencies": {
     "next": "^15.3.4",
@@ -16,9 +19,11 @@
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.3.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite": "^8.3.8"
   }
 }

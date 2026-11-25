@@ -1,71 +1,74 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { AppLink, ReadOnlyNotice, currentPath, useIdentity } from "@/components/identity";
+import { apiFetch } from "@/lib/api";
 
-export interface NavUser {
-  id: number;
-  username: string;
-  displayName: string;
-}
-
-const LINKS = [
+const LINKS: { href: string; label: string; feature?: "gpa" | "focus" }[] = [
   { href: "/", label: "面板" },
   { href: "/homework", label: "作业" },
   { href: "/courses", label: "课程" },
-  { href: "/gpa", label: "GPA" },
-  { href: "/focus", label: "专注" },
+  { href: "/gpa", label: "GPA", feature: "gpa" },
+  { href: "/focus", label: "专注", feature: "focus" },
 ];
 
-export default function Nav({ user }: { user: NavUser | null }) {
-  const pathname = usePathname();
+export default function Nav() {
+  const { account, ready, loginHref, features } = useIdentity();
+  const path = currentPath();
+  const links = LINKS.filter((l) => !l.feature || features[l.feature]);
+
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await apiFetch("/auth/logout", { method: "POST" });
     window.location.href = "/login";
   }
+
   return (
     <header className="border-b border-stone-200 bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
-          <Link href="/" className="text-lg font-bold tracking-tight">
+          <AppLink href="/" className="text-lg font-bold tracking-tight">
             Novara
-          </Link>
-          {user && (
+          </AppLink>
+          {ready && account && (
             <nav className="flex items-center gap-1 text-sm">
-              {LINKS.map((l) => (
-                <Link
+              {links.map((l) => (
+                <AppLink
                   key={l.href}
                   href={l.href}
                   className={
-                    pathname === l.href
+                    path === l.href
                       ? "rounded-lg bg-indigo-50 px-3 py-1.5 font-medium text-indigo-700"
                       : "rounded-lg px-3 py-1.5 text-stone-600 hover:bg-stone-100"
                   }
                 >
                   {l.label}
-                </Link>
+                </AppLink>
               ))}
             </nav>
           )}
         </div>
-        {user ? (
+        {!ready ? null : account ? (
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-stone-500">{user.displayName}</span>
-            <button onClick={logout} className="btn-ghost !px-2.5 !py-1">
-              退出
-            </button>
+            <span className="text-stone-500">{account.displayName}</span>
+            {features.passwordAuth && (
+              <button onClick={logout} className="btn-ghost !px-2.5 !py-1">
+                退出
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm">
-            <Link href="/login" className="btn-ghost">
-              登录
-            </Link>
-            <Link href="/register" className="btn-primary">
-              注册
-            </Link>
+            <AppLink href={loginHref} className="btn-primary">
+              {features.passwordAuth ? "登录" : "用 Qoder 账号登录"}
+            </AppLink>
+            {features.passwordAuth && (
+              <AppLink href="/register" className="btn-ghost">
+                注册
+              </AppLink>
+            )}
           </div>
         )}
       </div>
+      <ReadOnlyNotice />
     </header>
   );
 }

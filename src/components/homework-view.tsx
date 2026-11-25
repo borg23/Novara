@@ -1,32 +1,34 @@
 "use client";
 
+import { apiFetch, apiList } from "@/lib/api";
+import { IfWritable, useIdentity } from "@/components/identity";
 import { useCallback, useEffect, useState } from "react";
 
 interface Course {
-  id: number;
+  id: string;
   name: string;
   color: string;
 }
 
 interface Assignment {
-  id: number;
+  id: string;
   title: string;
   description: string;
   dueDate: string | null;
   status: string;
   priority: number;
-  courseId: number | null;
+  courseId: string | null;
   courseName: string | null;
   courseColor: string | null;
 }
 
 interface Exam {
-  id: number;
+  id: string;
   title: string;
   examDate: string | null;
   score: number | null;
   note: string;
-  courseId: number | null;
+  courseId: string | null;
   courseName: string | null;
 }
 
@@ -35,6 +37,7 @@ type Tab = "assignments" | "exams" | "import";
 const STATUS_TEXT: Record<string, string> = { todo: "待办", done: "已完成" };
 
 export default function HomeworkView() {
+  const { features } = useIdentity();
   const [tab, setTab] = useState<Tab>("assignments");
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -43,9 +46,9 @@ export default function HomeworkView() {
 
   const refresh = useCallback(async () => {
     const [c, a, e] = await Promise.all([
-      fetch("/api/courses").then((r) => r.json()),
-      fetch("/api/assignments").then((r) => r.json()),
-      fetch("/api/exams").then((r) => r.json()),
+      apiList<Course>("/courses", "courses"),
+      apiList<Assignment>("/assignments", "assignments"),
+      apiList<Exam>("/exams", "exams"),
     ]);
     setCourses(c);
     setAssignments(a);
@@ -58,17 +61,19 @@ export default function HomeworkView() {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  const tabs = (
+    [
+      ["assignments", "作业"],
+      ["exams", "考试记录"],
+      ["import", "批量导入"],
+    ] as [Tab, string][]
+  ).filter(([key]) => key !== "import" || features.batchImport);
+
   return (
     <div>
       <h1 className="mb-4 text-2xl font-bold">作业管理</h1>
       <div className="mb-4 flex gap-1 border-b border-stone-200 text-sm">
-        {(
-          [
-            ["assignments", "作业"],
-            ["exams", "考试记录"],
-            ["import", "批量导入"],
-          ] as [Tab, string][]
-        ).map(([key, label]) => (
+        {tabs.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -115,6 +120,7 @@ function AssignmentTab({
 }) {
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { readOnly } = useIdentity();
 
   const filtered = assignments.filter((a) => {
     if (filter === "todo") return a.status === "todo";
@@ -144,9 +150,11 @@ function AssignmentTab({
             </button>
           ))}
         </div>
-        <button className="btn-primary" onClick={() => { setEditing(null); setShowForm(!showForm); }}>
-          {showForm ? "收起表单" : "新建作业"}
-        </button>
+        <IfWritable>
+          <button className="btn-primary" onClick={() => { setEditing(null); setShowForm(!showForm); }}>
+            {showForm ? "收起表单" : "新建作业"}
+          </button>
+        </IfWritable>
       </div>
 
       {showForm && (
@@ -168,8 +176,9 @@ function AssignmentTab({
             <input
               type="checkbox"
               checked={a.status === "done"}
+              disabled={readOnly}
               onChange={async () => {
-                await fetch(`/api/assignments/${a.id}`, {
+                await apiFetch(`/assignments/${a.id}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ status: a.status === "done" ? "todo" : "done" }),
@@ -191,25 +200,27 @@ function AssignmentTab({
               </p>
             </div>
             <span className="badge bg-stone-100 text-stone-600">{STATUS_TEXT[a.status]}</span>
-            <button
-              className="btn-ghost !px-2 !py-1 text-xs"
-              onClick={() => {
-                setEditing(a);
-                setShowForm(true);
-              }}
-            >
-              编辑
-            </button>
-            <button
-              className="btn-ghost !px-2 !py-1 text-xs text-red-600"
-              onClick={async () => {
-                if (!confirm("确定删除该作业？")) return;
-                await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
-                refresh();
-              }}
-            >
-              删除
-            </button>
+            <IfWritable>
+              <button
+                className="btn-ghost !px-2 !py-1 text-xs"
+                onClick={() => {
+                  setEditing(a);
+                  setShowForm(true);
+                }}
+              >
+                编辑
+              </button>
+              <button
+                className="btn-ghost !px-2 !py-1 text-xs text-red-600"
+                onClick={async () => {
+                  if (!confirm("确定删除该作业？")) return;
+                  await apiFetch(`/assignments/${a.id}`, { method: "DELETE" });
+                  refresh();
+                }}
+              >
+                删除
+              </button>
+            </IfWritable>
           </li>
         ))}
       </ul>
@@ -243,7 +254,7 @@ function AssignmentForm({
       courseId: courseId === "" ? null : Number(courseId),
       priority,
     };
-    const res = await fetch(initial ? `/api/assignments/${initial.id}` : "/api/assignments", {
+    const res = await apiFetch(initial ? `/assignments/${initial.id}` : "/assignments", {
       method: initial ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -315,15 +326,17 @@ function ExamTab({
 
   return (
     <div className="space-y-4">
-      <button
-        className="btn-primary"
-        onClick={() => {
-          setEditing(null);
-          setShowForm(!showForm);
-        }}
-      >
-        {showForm ? "收起表单" : "新建考试记录"}
-      </button>
+      <IfWritable>
+        <button
+          className="btn-primary"
+          onClick={() => {
+            setEditing(null);
+            setShowForm(!showForm);
+          }}
+        >
+          {showForm ? "收起表单" : "新建考试记录"}
+        </button>
+      </IfWritable>
       {showForm && (
         <ExamForm
           courses={courses}
@@ -348,25 +361,27 @@ function ExamTab({
                 {x.note ? ` · ${x.note}` : ""}
               </p>
             </div>
-            <button
-              className="btn-ghost !px-2 !py-1 text-xs"
-              onClick={() => {
-                setEditing(x);
-                setShowForm(true);
-              }}
-            >
-              编辑
-            </button>
-            <button
-              className="btn-ghost !px-2 !py-1 text-xs text-red-600"
-              onClick={async () => {
-                if (!confirm("确定删除该考试记录？")) return;
-                await fetch(`/api/exams/${x.id}`, { method: "DELETE" });
-                refresh();
-              }}
-            >
-              删除
-            </button>
+            <IfWritable>
+              <button
+                className="btn-ghost !px-2 !py-1 text-xs"
+                onClick={() => {
+                  setEditing(x);
+                  setShowForm(true);
+                }}
+              >
+                编辑
+              </button>
+              <button
+                className="btn-ghost !px-2 !py-1 text-xs text-red-600"
+                onClick={async () => {
+                  if (!confirm("确定删除该考试记录？")) return;
+                  await apiFetch(`/exams/${x.id}`, { method: "DELETE" });
+                  refresh();
+                }}
+              >
+                删除
+              </button>
+            </IfWritable>
           </li>
         ))}
       </ul>
@@ -393,7 +408,7 @@ function ExamForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const res = await fetch(initial ? `/api/exams/${initial.id}` : "/api/exams", {
+    const res = await apiFetch(initial ? `/exams/${initial.id}` : "/exams", {
       method: initial ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -456,7 +471,7 @@ function ExamForm({
 function ImportTab({ refresh }: { refresh: () => Promise<void> }) {
   const [text, setText] = useState("");
   const [result, setResult] = useState<{
-    created: { id: number; title: string; courseName: string }[];
+    created: { id: string; title: string; courseName: string }[];
     failed: { line: string; error: string }[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -468,7 +483,7 @@ function ImportTab({ refresh }: { refresh: () => Promise<void> }) {
     setResult(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/assignments/import", {
+      const res = await apiFetch("/assignments/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),

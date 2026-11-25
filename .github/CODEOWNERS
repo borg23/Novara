@@ -1,0 +1,4 @@
+# 全部路径由 project-novara 团队负责审核。
+# 配合分支保护的「Require review from Code Owners」，每个 PR 都会自动请求该团队审核；
+# 团队有 3 名成员，作者本人不能批准自己的 PR，因此自合并会被挡住。
+* @borg23/project-novara

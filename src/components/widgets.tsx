@@ -126,7 +126,7 @@ function TodayTasks({ data, refresh }: { data: WidgetData; refresh: RefreshFn })
           </button>
         </form>
       </IfWritable>
-      {list.length === 0 && <p className="text-sm text-stone-400">今天没有待办任务</p>}
+      {list.length === 0 && <p className="text-sm text-faint">今天没有待办任务</p>}
       <ul className="space-y-1">
         {list.map((t) => (
           <li key={t.id} className="group flex items-center gap-2 text-sm">
@@ -135,12 +135,12 @@ function TodayTasks({ data, refresh }: { data: WidgetData; refresh: RefreshFn })
               checked={t.status === "done"}
               disabled={readOnly}
               onChange={() => toggle(t)}
-              className="h-4 w-4 accent-indigo-600"
+              className="h-4 w-4 accent-accent"
             />
             <span className="flex-1">{t.title}</span>
-            {t.dueDate && t.dueDate < today && <span className="text-xs text-red-500">已逾期</span>}
+            {t.dueDate && t.dueDate < today && <span className="text-xs text-danger">已逾期</span>}
             <IfWritable>
-              <button onClick={() => del(t.id)} className="hidden text-stone-400 hover:text-red-600 group-hover:block">
+              <button onClick={() => del(t.id)} className="hidden text-faint hover:text-danger group-hover:block">
                 删除
               </button>
             </IfWritable>
@@ -167,7 +167,7 @@ function HomeworkWidget({ data, refresh }: { data: WidgetData; refresh: RefreshF
   }
   return (
     <div className="space-y-2">
-      {todayList.length === 0 && <p className="text-sm text-stone-400">今天没有到期的作业</p>}
+      {todayList.length === 0 && <p className="text-sm text-faint">今天没有到期的作业</p>}
       <ul className="space-y-1">
         {todayList.map((a) => (
           <li key={a.id} className="flex items-center gap-2 text-sm">
@@ -176,7 +176,7 @@ function HomeworkWidget({ data, refresh }: { data: WidgetData; refresh: RefreshF
               checked={a.status === "done"}
               disabled={readOnly}
               onChange={() => toggle(a)}
-              className="h-4 w-4 accent-indigo-600"
+              className="h-4 w-4 accent-accent"
             />
             <span className="flex-1">{a.title}</span>
             {a.courseName && (
@@ -187,9 +187,9 @@ function HomeworkWidget({ data, refresh }: { data: WidgetData; refresh: RefreshF
           </li>
         ))}
       </ul>
-      <div className="flex items-center justify-between border-t border-stone-100 pt-2 text-xs text-stone-500">
+      <div className="flex items-center justify-between border-t border-line-soft pt-2 text-xs text-muted">
         <span>未来 {upcoming} 项待完成作业</span>
-        <AppLink href="/homework" className="font-medium text-indigo-600 hover:underline">
+        <AppLink href="/homework" className="font-medium text-accent hover:underline">
           前往作业管理
         </AppLink>
       </div>
@@ -231,7 +231,7 @@ function CalendarWidget({ data }: { data: WidgetData }) {
       </div>
       <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
         {["一", "二", "三", "四", "五", "六", "日"].map((w) => (
-          <div key={w} className="py-1 font-medium text-stone-400">
+          <div key={w} className="py-1 font-medium text-faint">
             {w}
           </div>
         ))}
@@ -243,15 +243,15 @@ function CalendarWidget({ data }: { data: WidgetData }) {
             <button
               key={ds}
               onClick={() => setSelected(selected === ds ? null : ds)}
-              className={`relative rounded-md py-1 transition-colors hover:bg-indigo-50 ${
-                ds === today ? "bg-indigo-600 text-white hover:bg-indigo-600" : ds === selected ? "bg-indigo-100" : ""
+              className={`relative rounded-md py-1 transition-colors hover:bg-accent-soft ${
+                ds === today ? "bg-accent-solid text-white hover:bg-accent-solid" : ds === selected ? "bg-accent-soft" : ""
               }`}
             >
               {d}
               {count > 0 && (
                 <span
                   className={`absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full ${
-                    ds === today ? "bg-white" : "bg-indigo-500"
+                    ds === today ? "bg-surface" : "bg-accent"
                   }`}
                 />
               )}
@@ -260,9 +260,9 @@ function CalendarWidget({ data }: { data: WidgetData }) {
         })}
       </div>
       {selected && (
-        <div className="border-t border-stone-100 pt-1 text-xs">
+        <div className="border-t border-line-soft pt-1 text-xs">
           {selectedList.length === 0 ? (
-            <p className="text-stone-400">该日无作业截止</p>
+            <p className="text-faint">该日无作业截止</p>
           ) : (
             <ul className="space-y-0.5">
               {selectedList.map((a) => (
@@ -290,8 +290,8 @@ function ScheduleWidget({ data }: { data: WidgetData }) {
   const weekNames = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
   return (
     <div className="space-y-2">
-      <p className="text-xs text-stone-500">{weekNames[dow - 1]} · {slots.length} 节课</p>
-      {slots.length === 0 && <p className="text-sm text-stone-400">今天没有课</p>}
+      <p className="text-xs text-muted">{weekNames[dow - 1]} · {slots.length} 节课</p>
+      {slots.length === 0 && <p className="text-sm text-faint">今天没有课</p>}
       <ul className="space-y-1.5">
         {slots.map((s, i) => (
           <li key={i} className="flex items-center gap-2 text-sm">
@@ -301,7 +301,7 @@ function ScheduleWidget({ data }: { data: WidgetData }) {
             />
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{s.course.name}</p>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-muted">
                 {s.startTime} - {s.endTime}
                 {s.location ? ` · ${s.location}` : ""}
               </p>
@@ -353,23 +353,23 @@ function WeatherWidget() {
           </option>
         ))}
       </select>
-      {loading && <p className="text-sm text-stone-400">加载中…</p>}
-      {weather?.error && <p className="text-sm text-red-500">{weather.error}</p>}
+      {loading && <p className="text-sm text-faint">加载中…</p>}
+      {weather?.error && <p className="text-sm text-danger">{weather.error}</p>}
       {weather?.current && (
         <>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold">{weather.current.temp}°</span>
-            <span className="text-sm text-stone-600">{weather.current.text}</span>
+            <span className="text-sm text-muted">{weather.current.text}</span>
             {weather.current.wind !== undefined && weather.current.wind !== "" && (
-              <span className="text-xs text-stone-400">风 {weather.current.wind} 级</span>
+              <span className="text-xs text-faint">风 {weather.current.wind} 级</span>
             )}
           </div>
           <div className="grid grid-cols-3 gap-1 text-center text-xs">
             {(weather.daily ?? []).slice(0, 3).map((d) => (
-              <div key={d.date} className="rounded-lg bg-stone-50 py-1.5">
-                <p className="text-stone-500">{d.date.slice(5).replace("-", "/")}</p>
+              <div key={d.date} className="rounded-lg bg-surface-soft py-1.5">
+                <p className="text-muted">{d.date.slice(5).replace("-", "/")}</p>
                 <p className="font-medium">{d.text}</p>
-                <p className="text-stone-500">
+                <p className="text-muted">
                   {d.max}° / {d.min}°
                 </p>
               </div>
@@ -427,7 +427,7 @@ function TimerWidget({ data, refresh }: { data: WidgetData; refresh: RefreshFn }
     <div className="space-y-2">
       <div className="text-center">
         <p className="font-mono text-4xl font-bold tabular-nums">{clock}</p>
-        <p className="mt-1 text-xs text-stone-500">今日已专注 {fmtDuration(data.focus.todayTotalSec)}</p>
+        <p className="mt-1 text-xs text-muted">今日已专注 {fmtDuration(data.focus.todayTotalSec)}</p>
       </div>
       <select
         className="input"
@@ -476,27 +476,27 @@ function TimerWidget({ data, refresh }: { data: WidgetData; refresh: RefreshFn }
 /* ---------- GPA 摘要 ---------- */
 function GpaWidget({ data }: { data: WidgetData }) {
   const g = data.gpa;
-  if (!g) return <p className="text-sm text-stone-400">暂无课程数据</p>;
+  if (!g) return <p className="text-sm text-faint">暂无课程数据</p>;
   const pct = g.targetCredits > 0 ? Math.min(100, Math.round((g.earnedCredits / g.targetCredits) * 100)) : 0;
   return (
     <div className="space-y-2">
       <div className="flex items-baseline gap-2">
         <span className="text-3xl font-bold">{g.gpa === null ? "—" : g.gpa.toFixed(2)}</span>
-        <span className="text-xs text-stone-500">当前 GPA（4.0）</span>
+        <span className="text-xs text-muted">当前 GPA（4.0）</span>
       </div>
       <div>
-        <div className="mb-1 flex justify-between text-xs text-stone-500">
+        <div className="mb-1 flex justify-between text-xs text-muted">
           <span>
             已获学分 {g.earnedCredits} / 目标 {g.targetCredits}
           </span>
           <span>{pct}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-stone-200">
-          <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${pct}%` }} />
+        <div className="h-2 overflow-hidden rounded-full bg-line">
+          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
         </div>
       </div>
-      <p className="text-xs text-stone-500">计划中学分共 {g.plannedCredits}</p>
-      <AppLink href="/gpa" className="text-xs font-medium text-indigo-600 hover:underline">
+      <p className="text-xs text-muted">计划中学分共 {g.plannedCredits}</p>
+      <AppLink href="/gpa" className="text-xs font-medium text-accent hover:underline">
         前往 GPA 计算器
       </AppLink>
     </div>

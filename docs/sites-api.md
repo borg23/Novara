@@ -5,7 +5,7 @@
 现状依据是 `src/app/api/**/route.ts` 的 18 个文件逐个读出来的，不是设计构想。每条都标了它是「等价搬迁」还是「新增」，「新增」是现在没有、静态化后必须补的能力。
 
 - 状态：契约条目已齐；5 处行为决策按工程最佳实践落定（见「已定」）；身份方案改为平台绑定后已重写「认证与身份」小节。评审通过后转定稿。
-- **阶段一实现范围**：`/auth/session`、`/auth/me`、`/courses`（含 `{id}` 与 `{id}/slots`）、`/assignments`（含 `{id}`）、`/exams`（含 `{id}`）、`/tasks`（含 `{id}`）、`/widgets`。**阶段二未实现**：`/assignments/import`、`/focus`、`/gpa`、`/gpa/upload`、`/weather`——部署形态隐藏入口，不留半成品交互。
+- **阶段一实现范围**：`/auth/session`、`/auth/me`、`/courses`（含 `{id}` 与 `{id}/slots`）、`/assignments`（含 `{id}`）、`/exams`（含 `{id}`）、`/tasks`（含 `{id}`）、`/widgets`、`/settings`。**阶段二未实现**：`/assignments/import`、`/focus`、`/gpa`、`/gpa/upload`、`/weather`——部署形态隐藏入口，不留半成品交互。
 - 前缀：`/functions/v1/app`（下文省略），全部同源、`credentials: 'same-origin'`。Function 侧看到的实际路径形态见「通用约定 · 路由匹配」。
 - 命名空间：`/api` 是平台保留路径，因此 `/api/*` → 业务子路径一对一改名，不改变层级语义。
 
@@ -83,6 +83,13 @@
 | `/focus` | POST | 等价搬迁 | `{assignmentId?, startedAt?, durationSec, note?}` → `{id}` | `durationSec` 必须落在 1–86400，否则 400 `时长无效`；`assignmentId` 非空时须属于本用户，否则 400 `所选作业不存在`；`startedAt` 解析失败则回落当前时间 |
 | `/widgets` | GET | 等价搬迁 | `{columns, style, order:[...]}` | 无配置行时返回默认：`columns 2`、`style card`、`order = ["todayTasks","homework","calendar","schedule","weather","timer","gpaSummary"]`；`order_json` 解析失败同样回落默认 |
 | `/widgets` | PUT | 等价搬迁，upsert 需两步 | `{columns, style?, order}` → `{ok:true, columns, style, order}` | `columns ∈ {1,2,3}` 否则 400 `列数需为 1、2 或 3`；`style ∈ {card,flat}`；`order` 必须是字符串数组且**逐项过滤到白名单**后落库。现状是 `ON CONFLICT(user_id) DO UPDATE`，链式客户端需 `insertIfAbsent` + `update` 两步（无事务，但重复执行结果一致，可接受） |
+
+## 主题设置
+
+| 子路径 | 方法 | 状态 | 返回 / 请求 | 校验与备注 |
+| --- | --- | --- | --- | --- |
+| `/settings` | GET | 等价搬迁 | `{theme}` | 无配置行时返回默认 `theme: "system"`；`theme ∈ {light,dark,system}`，落库值非法则回落 `system` |
+| `/settings` | PUT | 等价搬迁，upsert 需两步 | `{theme}` → `{ok:true, theme}` | `theme ∈ {light,dark,system}` 否则 400 `主题需为 light、dark 或 system`；upsert 同 `/widgets`：`insertIfAbsent` + `update` 两步 |
 
 ## GPA
 

@@ -14,6 +14,7 @@
 - 计时功能：绑定作业项，记录每项作业的专注时长（类似滴答清单）
 - 面板首页：今日任务、今日作业、日历、课程表、天气，组件模块化
 - 组件化自定义：拖拽排序、列数（1/2/3）、格子样式（卡片/扁平），按用户持久化
+- 主题：浅色 / 深色 / 跟随系统，登录用户在导航栏切换并持久化，访客跟随系统
 
 **本次比赛不做**：强制专注功能（留待后续独立项目）。
 
@@ -104,7 +105,7 @@ npm run dev:web        # 终端 2：Vite 壳，把 /functions/v1/app 代理到 8
 ```
 src/
   app/
-    api/            # 本地形态 REST API（auth/courses/assignments/exams/tasks/focus/widgets/gpa/weather）
+    api/            # 本地形态 REST API（auth/courses/assignments/exams/tasks/focus/widgets/gpa/weather/settings）
     login|register
     homework/ courses/ gpa/ focus/   # 功能页（薄壳，不读会话）
   components/       # nav / panel / widgets / identity / 各页面视图（两种形态共用）

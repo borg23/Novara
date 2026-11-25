@@ -2,6 +2,7 @@
 
 import { AppLink, ReadOnlyNotice, currentPath, useIdentity } from "@/components/identity";
 import { apiFetch } from "@/lib/api";
+import ThemeToggle from "@/components/theme-toggle";
 
 const LINKS: { href: string; label: string; feature?: "gpa" | "focus" }[] = [
   { href: "/", label: "面板" },
@@ -22,7 +23,7 @@ export default function Nav() {
   }
 
   return (
-    <header className="border-b border-stone-200 bg-white/80 backdrop-blur">
+    <header className="border-b border-line bg-surface/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
           <AppLink href="/" className="text-lg font-bold tracking-tight">
@@ -36,8 +37,8 @@ export default function Nav() {
                   href={l.href}
                   className={
                     path === l.href
-                      ? "rounded-lg bg-indigo-50 px-3 py-1.5 font-medium text-indigo-700"
-                      : "rounded-lg px-3 py-1.5 text-stone-600 hover:bg-stone-100"
+                      ? "rounded-lg bg-accent-soft px-3 py-1.5 font-medium text-accent-strong"
+                      : "rounded-lg px-3 py-1.5 text-muted hover:bg-surface-hover"
                   }
                 >
                   {l.label}
@@ -48,7 +49,8 @@ export default function Nav() {
         </div>
         {!ready ? null : account ? (
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-stone-500">{account.displayName}</span>
+            <span className="text-muted">{account.displayName}</span>
+            <ThemeToggle />
             {features.passwordAuth && (
               <button onClick={logout} className="btn-ghost !px-2.5 !py-1">
                 退出

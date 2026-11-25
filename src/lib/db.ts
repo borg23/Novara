@@ -93,6 +93,11 @@ CREATE TABLE IF NOT EXISTS widget_configs (
   order_json TEXT NOT NULL DEFAULT '["todayTasks","homework","calendar","schedule","weather","timer","gpaSummary"]',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  theme TEXT NOT NULL DEFAULT 'system'
+);
 `;
 
 function createDb(): DatabaseSync {

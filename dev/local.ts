@@ -12,6 +12,7 @@ const TABLES = [
   "exams",
   "focus_sessions",
   "tasks",
+  "user_settings",
   "widget_configs",
 ];
 
@@ -23,6 +24,7 @@ const UNIQUE: Record<string, string[][]> = {
   exams: [["id"]],
   focus_sessions: [["id"]],
   tasks: [["id"]],
+  user_settings: [["user_id"]],
   widget_configs: [["user_id"]],
 };
 
@@ -158,7 +160,9 @@ function createQuery(table: string): DbQuery {
       }
       for (const row of incoming) {
         if (row.created_at === undefined) row.created_at = new Date().toISOString();
-        if (table === "widget_configs" && row.updated_at === undefined) row.updated_at = row.created_at;
+        if ((table === "widget_configs" || table === "user_settings") && row.updated_at === undefined) {
+          row.updated_at = row.created_at;
+        }
         rows.push(row);
       }
       return { data: incoming.map((row) => project(row, columns)), error: null };

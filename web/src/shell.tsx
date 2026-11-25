@@ -3,6 +3,7 @@ import HomeworkView from "@/components/homework-view";
 import Nav from "@/components/nav";
 import Panel from "@/components/panel";
 import { IdentityProvider, currentPath } from "@/components/identity";
+import { ThemeProvider } from "@/components/theme-provider";
 
 function ComingSoon({ title }: { title: string }) {
   return (
@@ -36,10 +37,12 @@ export default function App() {
       requireLogin={false}
       features={{ gpa: false, focus: false, batchImport: false, weather: false, passwordAuth: false }}
     >
-      <Nav />
-      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-        <CurrentPage />
-      </main>
+      <ThemeProvider>
+        <Nav />
+        <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
+          <CurrentPage />
+        </main>
+      </ThemeProvider>
     </IdentityProvider>
   );
 }

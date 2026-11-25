@@ -76,23 +76,23 @@ export default function CoursesView() {
         />
       )}
 
-      {courses.length === 0 && <p className="py-8 text-center text-sm text-stone-400">暂无课程，先新建一门课程吧</p>}
+      {courses.length === 0 && <p className="py-8 text-center text-sm text-faint">暂无课程，先新建一门课程吧</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         {courses.map((c) => (
           <div key={c.id} className="card p-4">
             <div className="mb-2 flex items-center gap-2">
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
               <p className="flex-1 truncate font-semibold">{c.name}</p>
-              <span className="badge bg-stone-100 text-stone-600">{STATUS_TEXT[c.status]}</span>
+              <span className="badge bg-surface-hover text-muted">{STATUS_TEXT[c.status]}</span>
             </div>
-            <p className="mb-2 text-xs text-stone-500">
+            <p className="mb-2 text-xs text-muted">
               {c.teacher ? `${c.teacher} · ` : ""}
               {c.credits} 学分
               {c.grade ? ` · 成绩 ${c.grade}` : ""}
               {c.semester ? ` · ${c.semester}` : ""}
             </p>
             {c.slots.length > 0 && (
-              <ul className="mb-3 space-y-0.5 text-xs text-stone-500">
+              <ul className="mb-3 space-y-0.5 text-xs text-muted">
                 {c.slots
                   .slice()
                   .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
@@ -122,7 +122,7 @@ export default function CoursesView() {
                 >
                   课表设置
                 </button>
-                <button className="btn-ghost !px-2 !py-1 text-xs text-red-600" onClick={() => del(c.id)}>
+                <button className="btn-ghost !px-2 !py-1 text-xs text-danger" onClick={() => del(c.id)}>
                   删除
                 </button>
               </div>
@@ -220,13 +220,13 @@ function CourseForm({ initial, onDone }: { initial: Course | null; onDone: () =>
               key={c}
               type="button"
               onClick={() => setColor(c)}
-              className={`h-6 w-6 rounded-full ${color === c ? "ring-2 ring-offset-2 ring-stone-400" : ""}`}
+              className={`h-6 w-6 rounded-full ${color === c ? "ring-2 ring-offset-2 ring-line-strong" : ""}`}
               style={{ backgroundColor: c }}
             />
           ))}
         </div>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       <button type="submit" className="btn-primary">
         保存
       </button>
@@ -271,7 +271,7 @@ function SlotEditor({ course, onClose, onDone }: { course: Course; onClose: () =
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/40 p-4" onClick={onClose}>
       <div className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
         <h2 className="mb-3 text-lg font-bold">课表设置 · {course.name}</h2>
         <div className="space-y-3">
@@ -306,7 +306,7 @@ function SlotEditor({ course, onClose, onDone }: { course: Course; onClose: () =
               <div className="flex items-end">
                 <button
                   type="button"
-                  className="btn-ghost !py-1 text-red-600"
+                  className="btn-ghost !py-1 text-danger"
                   onClick={() => setSlots(slots.filter((_, idx) => idx !== i))}
                   disabled={slots.length === 1}
                 >
@@ -329,7 +329,7 @@ function SlotEditor({ course, onClose, onDone }: { course: Course; onClose: () =
             {saving ? "保存中…" : "保存课表"}
           </button>
         </div>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       </div>
     </div>
   );

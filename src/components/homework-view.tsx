@@ -72,13 +72,13 @@ export default function HomeworkView() {
   return (
     <div>
       <h1 className="mb-4 text-2xl font-bold">作业管理</h1>
-      <div className="mb-4 flex gap-1 border-b border-stone-200 text-sm">
+      <div className="mb-4 flex gap-1 border-b border-line text-sm">
         {tabs.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
             className={`-mb-px border-b-2 px-3 py-2 font-medium ${
-              tab === key ? "border-indigo-600 text-indigo-600" : "border-transparent text-stone-500 hover:text-stone-700"
+              tab === key ? "border-accent-strong text-accent" : "border-transparent text-muted hover:text-strong"
             }`}
           >
             {label}
@@ -169,7 +169,7 @@ function AssignmentTab({
         />
       )}
 
-      {filtered.length === 0 && <p className="py-8 text-center text-sm text-stone-400">暂无作业</p>}
+      {filtered.length === 0 && <p className="py-8 text-center text-sm text-faint">暂无作业</p>}
       <ul className="space-y-2">
         {filtered.map((a) => (
           <li key={a.id} className="card flex items-center gap-3 p-3">
@@ -185,21 +185,21 @@ function AssignmentTab({
                 });
                 refresh();
               }}
-              className="h-4 w-4 shrink-0 accent-indigo-600"
+              className="h-4 w-4 shrink-0 accent-accent"
             />
             <div className="min-w-0 flex-1">
-              <p className={`truncate text-sm font-medium ${a.status === "done" ? "text-stone-400 line-through" : ""}`}>
+              <p className={`truncate text-sm font-medium ${a.status === "done" ? "text-faint line-through" : ""}`}>
                 {a.title}
               </p>
-              <p className="truncate text-xs text-stone-500">
+              <p className="truncate text-xs text-muted">
                 {a.courseName ? `${a.courseName} · ` : ""}
                 {a.dueDate ? `截止 ${a.dueDate}` : "无截止日期"}
                 {a.status === "todo" && a.dueDate && a.dueDate < today && (
-                  <span className="ml-1 text-red-500">已逾期</span>
+                  <span className="ml-1 text-danger">已逾期</span>
                 )}
               </p>
             </div>
-            <span className="badge bg-stone-100 text-stone-600">{STATUS_TEXT[a.status]}</span>
+            <span className="badge bg-surface-hover text-muted">{STATUS_TEXT[a.status]}</span>
             <IfWritable>
               <button
                 className="btn-ghost !px-2 !py-1 text-xs"
@@ -211,7 +211,7 @@ function AssignmentTab({
                 编辑
               </button>
               <button
-                className="btn-ghost !px-2 !py-1 text-xs text-red-600"
+                className="btn-ghost !px-2 !py-1 text-xs text-danger"
                 onClick={async () => {
                   if (!confirm("确定删除该作业？")) return;
                   await apiFetch(`/assignments/${a.id}`, { method: "DELETE" });
@@ -303,7 +303,7 @@ function AssignmentForm({
         <label className="label">备注</label>
         <input className="input" value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       <button type="submit" className="btn-primary">
         保存
       </button>
@@ -348,13 +348,13 @@ function ExamTab({
           }}
         />
       )}
-      {exams.length === 0 && <p className="py-8 text-center text-sm text-stone-400">暂无考试记录</p>}
+      {exams.length === 0 && <p className="py-8 text-center text-sm text-faint">暂无考试记录</p>}
       <ul className="space-y-2">
         {exams.map((x) => (
           <li key={x.id} className="card flex items-center gap-3 p-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{x.title}</p>
-              <p className="truncate text-xs text-stone-500">
+              <p className="truncate text-xs text-muted">
                 {x.courseName ? `${x.courseName} · ` : ""}
                 {x.examDate ? `考试日期 ${x.examDate}` : "日期未定"}
                 {x.score !== null && ` · 成绩 ${x.score}`}
@@ -372,7 +372,7 @@ function ExamTab({
                 编辑
               </button>
               <button
-                className="btn-ghost !px-2 !py-1 text-xs text-red-600"
+                className="btn-ghost !px-2 !py-1 text-xs text-danger"
                 onClick={async () => {
                   if (!confirm("确定删除该考试记录？")) return;
                   await apiFetch(`/exams/${x.id}`, { method: "DELETE" });
@@ -459,7 +459,7 @@ function ExamForm({
         <label className="label">备注</label>
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       <button type="submit" className="btn-primary">
         保存
       </button>
@@ -507,7 +507,7 @@ function ImportTab({ refresh }: { refresh: () => Promise<void> }) {
     <div className="space-y-4">
       <div className="card p-4">
         <p className="mb-2 text-sm font-semibold">文本批量导入作业</p>
-        <p className="mb-3 text-xs text-stone-500">
+        <p className="mb-3 text-xs text-muted">
           每行一条作业，用逗号、分号或 Tab 分隔：<span className="font-mono">课程名, 作业标题, 截止日期(可选)</span>
           。课程不存在时会自动创建。
         </p>
@@ -519,7 +519,7 @@ function ImportTab({ refresh }: { refresh: () => Promise<void> }) {
             onChange={(e) => setText(e.target.value)}
             required
           />
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
           <button type="submit" disabled={loading} className="btn-primary">
             {loading ? "解析导入中…" : "解析并导入"}
           </button>
@@ -529,17 +529,17 @@ function ImportTab({ refresh }: { refresh: () => Promise<void> }) {
         <div className="card space-y-2 p-4 text-sm">
           <p className="font-medium">
             成功导入 {result.created.length} 条
-            {result.failed.length > 0 && <span className="text-red-600">，失败 {result.failed.length} 条</span>}
+            {result.failed.length > 0 && <span className="text-danger">，失败 {result.failed.length} 条</span>}
           </p>
           <ul className="space-y-1 text-xs">
             {result.created.map((c) => (
-              <li key={c.id} className="text-stone-600">
+              <li key={c.id} className="text-muted">
                 ✓ {c.courseName && `[${c.courseName}] `}
                 {c.title}
               </li>
             ))}
             {result.failed.map((f, i) => (
-              <li key={i} className="text-red-600">
+              <li key={i} className="text-danger">
                 ✗ {f.line || "(空行)"}：{f.error}
               </li>
             ))}

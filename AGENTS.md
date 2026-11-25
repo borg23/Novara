@@ -14,6 +14,8 @@
 | `src/app/api/` | 18 个 REST 路由文件（auth / courses / course slots / assignments / exams / tasks / focus / widgets / gpa / weather） |
 | `src/components/` | 全部 UI 与业务交互，8 个 `'use client'` 组件，请求都从这里直接发出 |
 | `src/lib/` | `db.ts`（`node:sqlite` 连接与建表）、`auth.ts`（scrypt 口令与会话 Cookie）、`gpa.ts`、`weather.ts`、`http.ts`（响应辅助） |
+| `functions/` | Sites 形态的单个 Edge Function：`app.ts`（业务，纯依赖注入）、`index.ts`（平台注入薄壳）、`auth.mjs`（逐字复制插件 `assets/user-context/auth.mjs` 的身份读取）、`shared/`（Next 与 Deno 共用的纯函数） |
+| `dev/` | `local.ts` 本地薄壳：注入 fake db（落 `dev/.data.json`，已 gitignore）与四种本地身份，绑定 `127.0.0.1:8000` |
 | `data/` | 运行期生成的 `novara.db`，已 gitignore，不属于交付物 |
 
 ## 如何运行
@@ -30,9 +32,10 @@ npm run dev            # http://localhost:3000
 
 | 目的 | 命令 | 状态 |
 | --- | --- | --- |
-| 开发 | `npm run dev` | 可用 |
-| 构建 | `npm run build` | 可用，且是改动后的主验证手段（Next 构建默认做类型检查） |
+| 开发（本地 Next 形态） | `npm run dev` | 可用 |
+| 构建（本地 Next 形态） | `npm run build` | 可用，且是改动后的主验证手段（Next 构建默认做类型检查） |
 | 生产启动 | `npm start` | 可用 |
+| 本地函数薄壳 | `npm run dev:function` | 可用；数据落 `dev/.data.json`，身份切换页 <http://127.0.0.1:8000/__local> |
 | 测试 | 无 | 仓库没有测试框架，也没有测试用例。**不要臆造 `npm test`** |
 | Lint | 无 | 未配置 ESLint / Prettier，也没有配置文件 |
 | Function 类型检查 | `deno check functions/index.ts` | 仅用于部署形态的 Edge Function；本机 Deno 2.9.8 已就绪。**`npm run build` 不覆盖 Function** |

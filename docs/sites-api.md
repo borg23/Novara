@@ -5,6 +5,7 @@
 现状依据是 `src/app/api/**/route.ts` 的 18 个文件逐个读出来的，不是设计构想。每条都标了它是「等价搬迁」还是「新增」，「新增」是现在没有、静态化后必须补的能力。
 
 - 状态：契约条目已齐；5 处行为决策按工程最佳实践落定（见「已定」）；身份方案改为平台绑定后已重写「认证与身份」小节。评审通过后转定稿。
+- **阶段一实现范围**：`/auth/session`、`/auth/me`、`/courses`（含 `{id}` 与 `{id}/slots`）、`/assignments`（含 `{id}`）、`/exams`（含 `{id}`）、`/tasks`（含 `{id}`）、`/widgets`。**阶段二未实现**：`/assignments/import`、`/focus`、`/gpa`、`/gpa/upload`、`/weather`——部署形态隐藏入口，不留半成品交互。
 - 前缀：`/functions/v1/app`（下文省略），全部同源、`credentials: 'same-origin'`。Function 侧看到的实际路径形态见「通用约定 · 路由匹配」。
 - 命名空间：`/api` 是平台保留路径，因此 `/api/*` → 业务子路径一对一改名，不改变层级语义。
 
@@ -20,6 +21,8 @@
 | 方法约束 | GET 不得改状态；写方法需显式白名单 | 平台文档要求 |
 | **路由匹配** | 先剥掉路径第一段再匹配业务子路径。**禁止硬编码 `app`**，也禁止按 `/functions/v1/app` 整段前缀匹配 | 实测（#26）：浏览器请求 `/functions/v1/app/transport`，Function 侧 `path_seen` 是 `/app-<32位hex>/transport`——函数名段被替换为**含部署哈希的物理名，每次部署可能变**，后缀保留 |
 | **绝对 URL** | 需要公网 origin 时一律读站点设置的 `APP_ORIGIN`，不得由 `request.url` 拼接 | 实测（#26）：Function 看到的 host 是 `22.0.35.50:9998`（内网地址） |
+| **只读标记的载体** | 对象响应（`/widgets`、`/gpa`、`/focus`）内嵌 `"readOnly": true`；**数组响应无法带字段，改用响应头 `x-novara-read-only: true`** | 「无上下文时业务 GET 返回样例数据且响应带 readOnly」这条对数组必须有个可实现的落法；前端以 `/auth/me` 为主判据，响应头用于兜底 |
+| **谓词能力** | 阶段一只使用已证实可用的 `select` / `eq` / `order` / `limit` / `insert` / `insertIfAbsent` / `update` / `delete`；`today` / `overdue` / 排序在 Function 内存对**该 owner 自有行集**完成 | `or` / `in` / 范围比较仍无返回值证据（见「仍需实测」），不押注；内存过滤与现状 SQL 语义等价 |
 
 ## 认证与身份
 
@@ -28,7 +31,7 @@
 | 子路径 | 方法 | 状态 | 请求 | 成功返回 | 关键规则 |
 | --- | --- | --- | --- | --- | --- |
 | `/auth/session` | POST | **新增** | 无 | `{id, displayName}` | 登录回跳后调用。读服务端注入上下文 → 按 `users.qoder_user_id` 查 → 未命中即 JIT 建号。幂等依据是该列的 `UNIQUE`，用 `insertIfAbsent`；若返回空说明并发已命中，改为**再读一次**而不是重试写。新用户同时插入默认 `widget_configs` 行（现状注册流程的等价行为） |
-| `/auth/me` | GET | **新增** | 无 | 已登录 `{id, displayName, readOnly:false}`；匿名 `{readOnly:true}` 且 **200** | 替代 `layout.tsx` 的 `getSessionUser()` 与 5 个页面的 `requireUser()`。匿名不返 401，前端据此渲染只读横幅与登录入口，而不是跳登录页 |
+| `/auth/me` | GET | **新增** | 无 | 已登录 `{id, displayName, readOnly:false}`；匿名 `{readOnly:true}` 且 **200** | 替代 `layout.tsx` 的 `getSessionUser()` 与 5 个页面的 `requireUser()`。匿名不返 401，前端据此渲染只读横幅与登录入口，而不是跳登录页。**已登录时与 `/auth/session` 共用同一条 JIT 路径**：任一先到都完成绑定，前端启动只需一次请求；`/auth/session` 仍按契约保留给登录回跳显式调用 |
 
 **匿名与写保护**
 

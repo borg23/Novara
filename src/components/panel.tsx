@@ -149,6 +149,8 @@ export default function Panel() {
           const def = WIDGETS[w];
           if (!def) return null;
           const isCard = config.style === "card";
+          const isDragging = editMode && dragIdx === idx;
+          const isDropTarget = editMode && dragOverIdx === idx && dragIdx !== idx;
           return (
             <div
               key={w}
@@ -166,20 +168,40 @@ export default function Panel() {
                 setDragIdx(null);
                 setDragOverIdx(null);
               }}
-              className={
-                isCard
-                  ? "card p-4"
-                  : "border-b border-stone-200 pb-4"
-              }
+              onDragEnd={() => {
+                setDragIdx(null);
+                setDragOverIdx(null);
+              }}
+              className={`${
+                isCard ? "card p-4" : "border-b border-stone-200 pb-4"
+              } ${isDragging ? "opacity-50 outline-2 outline-dashed outline-indigo-400 outline-offset-2" : ""} ${
+                isDropTarget ? "bg-indigo-100/70 ring-2 ring-inset ring-indigo-500" : ""
+              }`}
             >
               <div
                 className={`mb-2 flex items-center justify-between ${
                   editMode ? "cursor-grab" : ""
-                } ${dragOverIdx === idx && dragIdx !== idx ? "rounded-lg bg-indigo-50" : ""}`}
+                }`}
               >
                 <h2 className="text-sm font-semibold text-stone-700">{def.title}</h2>
                 {editMode && (
                   <div className="flex items-center gap-1">
+                    <button
+                      className="btn-ghost !px-1.5 !py-0.5 text-xs"
+                      title="上移"
+                      disabled={idx === 0}
+                      onClick={() => moveWidget(idx, idx - 1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      className="btn-ghost !px-1.5 !py-0.5 text-xs"
+                      title="下移"
+                      disabled={idx === config.order.length - 1}
+                      onClick={() => moveWidget(idx, idx + 1)}
+                    >
+                      ↓
+                    </button>
                     <span className="text-xs text-stone-400" title="拖拽排序">
                       拖拽排序
                     </span>

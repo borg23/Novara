@@ -557,6 +557,7 @@ export function application(deps: AppDeps) {
           title,
           description: readText(body.description),
           due_date: dueDateOf(body, "dueDate"),
+          status: "todo",
           priority: numberOrZero(body.priority),
         };
         await write(db.from("assignments").insert(row));
@@ -687,6 +688,7 @@ export function application(deps: AppDeps) {
           user_id: target.id,
           title,
           due_date: dueDateOf(body, "dueDate"),
+          status: "todo",
         };
         await write(db.from("tasks").insert(row));
         return respond({ id: row.id, title });

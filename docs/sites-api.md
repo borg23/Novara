@@ -114,4 +114,4 @@
 
 - 本地 Next 仍是 `scrypt + novara_session Cookie + sessions 表`；部署形态走平台身份，**不建口令、不建会话表**。两套身份模型并存是本期刻意取舍，代价是本地无法验证绑定路径——需要 `dev/` 里的身份 fixture，且 fixture 头**不得**进生产端点。
 - `/auth/*` 语义因此不同：本地有 `login` / `register` / `logout`，线上只有 `session` 与 `me`。#21 前端改造完成后本地口令分支去留由队长定：保留 = 可离线开发与演示；删除 = 单一模型。
-- **一条实测修正**：Cookie 在未开启 `forwardApplicationCredentials` 时就已经到达 Function 原始 header（#27 `app_cookie_visible:true`）。也就是说"部署形态做不了自建口令"是**错的**——不做口令的理由是范围与维护成本，不是能力受限。
+- **一条实测修正**：Cookie 在未开启 `forwardApplicationCredentials` 时就已到达 Function 原始 header，且 Function 返回的 `Set-Cookie` 能原样穿过网关回环（#27 第二轮，`probe_set` 往返可见）。也就是说「部署形态做不了自建口令」是**错的**——不做口令的真实理由是边际收益：免登录可看由匿名只读覆盖，本地切用户由 fixture 覆盖；只有「无 Qoder 账号也要创建数据」才需要它，代价约 350–400 行 Function + 3 张表，且必须同时禁止按 email / 名称自动关联。

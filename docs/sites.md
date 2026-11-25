@@ -76,7 +76,7 @@
 **已定**
 
 - **身份方案**：平台 Qoder 上下文作为凭证，**用户记录与业务数据仍由本库 `app.users` 持有**（可解绑、可导出、可停用）。本期不建口令、不建会话表与限流表。理由：自建身份提供方在主流架构文档中被列为反模式，平台已提供 IdP，不属「别无选择」；同时避免引入「按 email / 名称自动关联账户」这类账号接管风险面。
-- **不做口令不等于做不到**：#27 实测显示应用 Cookie 在**未开启** `forwardApplicationCredentials` 时就已到达 Function 原始 header。所以这条决策的依据是范围与维护成本，不是能力受限——记录在此，免得后人误以为平台不支持。
+- **不做口令不等于做不到**：#27 实测显示应用 Cookie 在**未开启** `forwardApplicationCredentials` 时就已到达 Function 原始 header。所以这条决策的依据不是能力受限，而是边际收益：「评委没 Qoder 账号也能看」已由**匿名只读样例**覆盖（约 30 行）；「开发时切换用户测隔离」已由**本地身份 fixture**覆盖（第九节）。剩下的唯一增量是「无 Qoder 账号也能**创建**数据」——若它成为硬需求，按 expand 加回：约 350–400 行 Function、3 张表（`sessions` / `auth_limiter` / `users` 口令列）、约 1 人日，并且必须同时实现「绑定只能在已认证会话内显式发起」这条防接管规则。
 
 **待实测（不能靠猜实现）**
 
@@ -106,9 +106,61 @@
 | Function 看到的 host | `22.0.35.50:9998` | 内网地址。绝对 URL 一律读站点设置的 `APP_ORIGIN` |
 | 登录态身份上下文 | `sdk_verdict:"accepted"`，`user_id` 长度 36，`has_org_id:false` | 平台身份路径可用，#26 前提成立 |
 | 匿名请求 | `sdk_verdict:"absent"`、`logged_in:false`，**200 不是 403** | 只读分支判定可靠 |
-| 应用 Cookie | `app_cookie_visible:true`（未开启 `forwardApplicationCredentials`） | 推翻「默认会剥掉 Cookie」的文档措辞对本场景的适用性 |
+| 应用 Cookie | `app_cookie_visible:true`（未开启 `forwardApplicationCredentials`）；第二轮补测 `Set-Cookie` 原样穿过网关、回环可见 | 自建口令与 Cookie 会话**技术上可做**，不做是取舍 |
+| 物理函数名跨部署 | 第一次 `/app-d01a21202b2d8721698c8de860972f6d5`，第二次 `/app-d01a21285470d79b29ff2ae93f36b5f2f` | **同一次发布就变了**——硬编码路径必炸，只能剥第一段 |
 | 未知 action | `404 {"error":"not_found"}` | 路由表的 404 分支在线上生效 |
 | 私有站点 | 全部路径含静态首页 → `401 {"code":"sites_gateway_login_required"}` | 作品**必须设为公开访问**，否则评委只会看到这一行 JSON |
 | 后端分配 | `capabilities:["functions","storage"]`、`database_access_model:"legacy"` | 见「五」：正式站要显式选 `function_backend`，legacy 不可原地切换 |
 | 配额 | 全程无 `sites_quota_exceeded` | 两个上限仍未知；探针已使名下站点 3 → 4，且很可能消耗了一个后端名额 |
 | 本地检查 | `deno check functions/index.ts` exit=0（Deno 2.9.8，装在 `D:\Programs\Deno`） | Function 有提交前类型检查；`npm run build` 只覆盖前端，二者不可互替 |
+
+## 八、红线清单（实现前对照，超出即返工）
+
+### A. 形态级——做不到，不是麻烦
+
+| # | 红线 | 对本项目的具体后果 |
+| --- | --- | --- |
+| 1 | 无 Node 运行时、无框架 SSR、无 server components、无 API Routes、无常驻进程、无后台任务与定时器 | 7 个页面壳 + 全部 route 都要重写形态 |
+| 2 | **只有一个** Edge Function（逻辑名 `app`） | 18 个 route 合并成一份路由表 |
+| 3 | 部署时不装依赖；打包器不编译源码、不补依赖 | import 必须自包含、带显式扩展名 |
+| 4 | **无文件系统**：`node:fs`、`node:path`、`node:sqlite` 均不可用 | `src/lib/db.ts` 在 Sites 上一行都跑不了 |
+| 5 | `node:crypto` 的 **scrypt 不存在**（WebCrypto 只有 PBKDF2 / HKDF） | 若做口令必须换算法，已存哈希作废 |
+| 6 | **无事务**，也不提供 Function 侧事务 API | 课表替换、批量导入按补偿式与幂等键设计（见契约「已定」） |
+| 7 | 保留路径：`/api`、`/functions`、`/storage`、`/internal`、`/__qoder_auth`、`/__qoder_internal`、`/rest/v1`、`/supabase` | 现有 `/api/*` 全部改名 |
+| 8 | 数据库只能从 Function 访问；**legacy 模型不能原地切 `function_backend`** | 正式站第一步就要显式选对模型 |
+| 9 | 产物 ≤50 MiB；`.git`、`node_modules`、`.env*`、私钥、`_qoder` 目录禁止入包 | 上传前检查 source map 与内嵌配置 |
+
+### B. 运行时认知级——本轮实测出来的，最容易白踩
+
+| # | 事实 | 规则 |
+| --- | --- | --- |
+| 10 | Function 看到的 host 是内网地址（`22.0.35.50:9998`） | 需要公网 origin 一律读站点设置的 `APP_ORIGIN` |
+| 11 | 路径首段是**含部署哈希的物理名，每次部署都变**（两次实测不同） | 先剥第一段再匹配；禁止硬编码 `app` |
+| 12 | 私有站点连静态首页都返回 `401 sites_gateway_login_required` | 作品必须 public，发布后核实访问模式 |
+| 13 | 配额只在 `sites_quota_exceeded` 报错里给 `used/limit` | 不排"应该够用"的计划 |
+| 14 | `next/headers` 的 `cookies()` / `redirect()` 没有对应物 | 6 处服务端会话读取必须下掉 |
+
+## 九、本地开发与结构约束
+
+迁移期间有一条铁律：**`main` 在任何时刻都必须能 `npm run dev` 跑起来、能登录、能演示**。因此在 Sites 形态验收通过之前，**不删除** `src/app/api/**` 与 `src/lib/auth.ts`；本地 Next 形态与部署形态并行存在，之后再一次性移除旧形态。
+
+新形态的本地结构（对齐插件范例的依赖注入形状）：
+
+```text
+functions/
+  app.ts        业务逻辑，纯依赖注入，不含任何平台 import
+  shared/       computeGpa / 解析器等纯函数，Next 与 Deno 共用同一份实现
+  index.ts      生产薄壳：注入平台 SDK（createDatabaseClient 等）
+dev/
+  local.ts      本地薄壳：注入 fake db 与 fixture 身份，绑定 127.0.0.1:8000
+```
+
+四条要点：
+
+1. `_qoder/backend.mjs` 只在部署时由平台注入，本地不存在 → **`index.ts` 不得进本地测试路径**，业务逻辑必须能脱离它运行。
+2. 前端同源代理：Vite dev 把 `/functions/v1/app` 代理到 `127.0.0.1:8000` 并保留路径。**代理配置不是生产路由**，本地通过不构成线上证据。
+3. 身份用开发态 fixture（`A` / `B` / `anonymous` / `error` 四态）而不是给用户加口令。生产端点**不得包含 fixture 开关**——`functions/` 目录内出现 `fixture` 字样即视为缺陷。
+4. 本地持久化：`dev/` 里的 fake db 需把数据落 JSON 文件，否则重启即丢，测不了面板配置与成绩持久化。
+5. 纯逻辑只放 `functions/shared/` 一份，Next 也从那 import。**不要维护两份 `gpa.ts`**——分叉的是 I/O 层，不是算法层。
+
+> 边界说明：本地跑通只证明业务逻辑，不证明 RLS、配额、Set-Cookie 行为、外部接口放行。这些只有部署环境算数（见第七节）。

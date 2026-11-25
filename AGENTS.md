@@ -58,6 +58,11 @@ npm run dev            # http://localhost:3000
 - **部署形态的 owner 只能来自服务端注入的平台上下文或已解析的 app 身份**，客户端传入的任何用户 id 一律忽略。
 - **禁止按 email / 用户名 / 显示名自动关联账户**，唯一匹配路径是 `users.qoder_user_id` 精确相等（同类缺陷见 Keycloak CVE-2026-97175）。
 - 部署形态的路由必须**剥掉路径第一段再匹配**：Function 实际收到的是 `/app-<部署哈希>/...`，禁止硬编码 `app`。需要绝对 URL 时读站点设置的 `APP_ORIGIN`，不得用 `request.url` 的 host。
+- 动 Sites 形态的实现前，先对照 `docs/sites.md` 第八节**红线清单**（14 条）。超出平台能力的方案不是"麻烦"，是做不到，会整段返工。
+- **迁移期间 `main` 必须始终 `npm run dev` 可跑、可登录、可演示**：Sites 形态验收通过前不删除 `src/app/api/**` 与 `src/lib/auth.ts`。
+- Function 目录结构：业务逻辑在 `functions/app.ts`（纯依赖注入），平台注入只在 `functions/index.ts`，本地薄壳在 `dev/`。`_qoder/` 由平台注入，**本地不可 import，也禁止创建该目录**。
+- 纯函数只在 `functions/shared/` 存一份，Next 与 Deno 共用。不维护两份 `gpa.ts`——分叉的只能是 I/O 层，不是算法层。
+- 开发态身份 fixture（`A` / `B` / `anonymous` / `error`）只允许出现在 `dev/`；**`functions/` 目录内出现 `fixture` 字样即视为缺陷**。
 - 不在本仓库引入新的运行时依赖去"顺手优化"；依赖变更只允许服务于交付目标本身。
 - `data/` 下是本地运行期数据，不提交、不上传、不作为对外截图或演示素材。
 

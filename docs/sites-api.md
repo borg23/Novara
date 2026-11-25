@@ -18,8 +18,8 @@
 | 状态码 | 400 输入无效 / 401 未登录或会话过期 / 403 身份上下文无效 / 404 资源不属于本用户或路径未知 / 405 方法不支持 / 409 唯一冲突 / 502 上游失败 / 503 依赖不可用 | 现状只有 400/401/404/409/502；403、405、503 是 Function 路由表必须自己补的（Next 会代答 405） |
 | 列表默认排序 | 保持现状 SQL 的 `ORDER BY` 语义，不在迁移期顺手调整 | 面板与作业页的顺序感是用户已习惯的行为 |
 | 方法约束 | GET 不得改状态；写方法需显式白名单 | 平台文档要求 |
-| **路由匹配** | 先剥掉路径第一段再匹配业务子路径。**禁止硬编码 `app`**，也禁止按 `/functions/v1/app` 整段前缀匹配 | 实测（#27）：浏览器请求 `/functions/v1/app/transport`，Function 侧 `path_seen` 是 `/app-<32位hex>/transport`——函数名段被替换为**含部署哈希的物理名，每次部署可能变**，后缀保留 |
-| **绝对 URL** | 需要公网 origin 时一律读站点设置的 `APP_ORIGIN`，不得由 `request.url` 拼接 | 实测（#27）：Function 看到的 host 是 `22.0.35.50:9998`（内网地址） |
+| **路由匹配** | 先剥掉路径第一段再匹配业务子路径。**禁止硬编码 `app`**，也禁止按 `/functions/v1/app` 整段前缀匹配 | 实测（#26）：浏览器请求 `/functions/v1/app/transport`，Function 侧 `path_seen` 是 `/app-<32位hex>/transport`——函数名段被替换为**含部署哈希的物理名，每次部署可能变**，后缀保留 |
+| **绝对 URL** | 需要公网 origin 时一律读站点设置的 `APP_ORIGIN`，不得由 `request.url` 拼接 | 实测（#26）：Function 看到的 host 是 `22.0.35.50:9998`（内网地址） |
 
 ## 认证与身份
 
@@ -42,7 +42,7 @@
 - **禁止按 email / 用户名 / 显示名自动关联既有账户**，唯一匹配路径是 `users.qoder_user_id` 精确相等。同类缺陷见 Keycloak CVE-2026-97175。
 - 浏览器 `GET /__qoder_auth/me` 只可用于界面展示，**不得作为凭证**参与任何服务端判定。
 
-> 实测依据（#27）：登录态 `context → {"sdk_verdict":"accepted","logged_in":true,"user_id_length":36}`；匿名态 `→ {"sdk_verdict":"absent","logged_in":false}`。**是缺失而不是无效**，因此上面的只读分支判定可靠。
+> 实测依据（#26）：登录态 `context → {"sdk_verdict":"accepted","logged_in":true,"user_id_length":36}`；匿名态 `→ {"sdk_verdict":"absent","logged_in":false}`。**是缺失而不是无效**，因此上面的只读分支判定可靠。
 
 ## 课程与课表
 
@@ -107,11 +107,11 @@
 
 - **`function_backend` 客户端的能力面**：`or` / `in` / 范围比较 / 显式列裁剪是否在范例演示之外可用，必须在 #20 开工前实测拿到返回值确认。本文所有过滤条件（`today` / `overdue` / 日期范围）都押在这项能力上。
 - **平台身份路径的隔离性**：身份上下文由网关注入、SDK 只校验格式不校验签名；是否已封堵 Provider 直连与跨租户路径需单独验证，未验证前不得按「已隔离」上线。
-- **配额**：`sites_total` 与 `backend_sites` 的 `used/limit` 只能在真实 `prepare_site` 报错时取得。#27 探针全程未触发报错，因此两个上限仍未知；且探针只申请 functions 却自动带上了 storage。
+- **配额**：`sites_total` 与 `backend_sites` 的 `used/limit` 只能在真实 `prepare_site` 报错时取得。#26 探针全程未触发报错，因此两个上限仍未知；且探针只申请 functions 却自动带上了 storage。
 - **外部调用放行**：`open-meteo` 与高德接口从 Function 侧发起是否可达，需在部署环境实测；本地通不代表线上通。
 
 ## 已知分叉（本地 vs 部署形态）
 
 - 本地 Next 仍是 `scrypt + novara_session Cookie + sessions 表`；部署形态走平台身份，**不建口令、不建会话表**。两套身份模型并存是本期刻意取舍，代价是本地无法验证绑定路径——需要 `dev/` 里的身份 fixture，且 fixture 头**不得**进生产端点。
 - `/auth/*` 语义因此不同：本地有 `login` / `register` / `logout`，线上只有 `session` 与 `me`。#21 前端改造完成后本地口令分支去留由队长定：保留 = 可离线开发与演示；删除 = 单一模型。
-- **一条实测修正**：Cookie 在未开启 `forwardApplicationCredentials` 时就已到达 Function 原始 header，且 Function 返回的 `Set-Cookie` 能原样穿过网关回环（#27 第二轮，`probe_set` 往返可见）。也就是说「部署形态做不了自建口令」是**错的**——不做口令的真实理由是边际收益：免登录可看由匿名只读覆盖，本地切用户由 fixture 覆盖；只有「无 Qoder 账号也要创建数据」才需要它，代价约 350–400 行 Function + 3 张表，且必须同时禁止按 email / 名称自动关联。
+- **一条实测修正**：Cookie 在未开启 `forwardApplicationCredentials` 时就已到达 Function 原始 header，且 Function 返回的 `Set-Cookie` 能原样穿过网关回环（#26 第二轮，`probe_set` 往返可见）。也就是说「部署形态做不了自建口令」是**错的**——不做口令的真实理由是边际收益：免登录可看由匿名只读覆盖，本地切用户由 fixture 覆盖；只有「无 Qoder 账号也要创建数据」才需要它，代价约 350–400 行 Function + 3 张表，且必须同时禁止按 email / 名称自动关联。

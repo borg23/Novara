@@ -76,13 +76,13 @@
 **已定**
 
 - **身份方案**：平台 Qoder 上下文作为凭证，**用户记录与业务数据仍由本库 `app.users` 持有**（可解绑、可导出、可停用）。本期不建口令、不建会话表与限流表。理由：自建身份提供方在主流架构文档中被列为反模式，平台已提供 IdP，不属「别无选择」；同时避免引入「按 email / 名称自动关联账户」这类账号接管风险面。
-- **不做口令不等于做不到**：#27 实测显示应用 Cookie 在**未开启** `forwardApplicationCredentials` 时就已到达 Function 原始 header。所以这条决策的依据不是能力受限，而是边际收益：「评委没 Qoder 账号也能看」已由**匿名只读样例**覆盖（约 30 行）；「开发时切换用户测隔离」已由**本地身份 fixture**覆盖（第九节）。剩下的唯一增量是「无 Qoder 账号也能**创建**数据」——若它成为硬需求，按 expand 加回：约 350–400 行 Function、3 张表（`sessions` / `auth_limiter` / `users` 口令列）、约 1 人日，并且必须同时实现「绑定只能在已认证会话内显式发起」这条防接管规则。
+- **不做口令不等于做不到**：#26 实测显示应用 Cookie 在**未开启** `forwardApplicationCredentials` 时就已到达 Function 原始 header。所以这条决策的依据不是能力受限，而是边际收益：「评委没 Qoder 账号也能看」已由**匿名只读样例**覆盖（约 30 行）；「开发时切换用户测隔离」已由**本地身份 fixture**覆盖（第九节）。剩下的唯一增量是「无 Qoder 账号也能**创建**数据」——若它成为硬需求，按 expand 加回：约 350–400 行 Function、3 张表（`sessions` / `auth_limiter` / `users` 口令列）、约 1 人日，并且必须同时实现「绑定只能在已认证会话内显式发起」这条防接管规则。
 
 **待实测（不能靠猜实现）**
 
 - **`function_backend` 查询客户端的能力面**：官方范例只演示了 `select` / `eq` / `order` / `limit` / `insert` / `insertIfAbsent` / `update` / `delete`。面板与 GPA 需要的 `or` / `in` / 范围比较**未经证实，必须实测**，不能按 Supabase 全集假设。
 - **没有事务**：文档明确多次 SDK 调用不是一个事务，也不提供 Function 侧事务 API。批量导入与课表替换都按补偿式与幂等键设计（见契约「已定」）。
-- **后端模型必须显式选**：#27 探针只申请 functions，平台却返回 `database_access_model:"legacy"` 并附带 storage。而 legacy **不能原地切换**——正式站第一步要 `ensure_backend(database + functions, databaseAccessModel:"function_backend")` 并回读确认，选错只能换站点重配。
+- **后端模型必须显式选**：#26 探针只申请 functions，平台却返回 `database_access_model:"legacy"` 并附带 storage。而 legacy **不能原地切换**——正式站第一步要 `ensure_backend(database + functions, databaseAccessModel:"function_backend")` 并回读确认，选错只能换站点重配。
 - **平台身份的隔离性**：SDK 只校验格式不校验签名；Provider 直连、备用入口、跨租户路径是否已封堵需单独验证，未验证前不得按「已隔离」上线。
 - **配额数值仍未知**：探针全程未触发 `sites_quota_exceeded`，`sites_total` / `backend_sites` 的 `used/limit` 只能等正式站 prepare 时报错取得。
 - **部署账号**：站点 owner 就是执行发布的账号，后续改名、可见性与删除都在该账号下。多账号分别部署等于配额翻倍，但作品帖只能挂一个链接，其余站点仍需独立保持公开可访问。
@@ -98,13 +98,13 @@
 
 ## 七、部署环境实测记录
 
-### 2026-11-25 · 探针站 #27（`auth-probe`，只含 functions + 静态页）
+### 2026-11-25 · 探针站 #26（`auth-probe`，只含 functions + 静态页）
 
 | 关注点 | 实测结果 | 对实现的影响 |
 | --- | --- | --- |
 | Function 收到的路径 | `/functions/v1/app/transport` → `path_seen = /app-<32位hex>/transport` | 函数名段被替换为**含部署哈希的物理名**、后缀保留。路由必须剥第一段，禁止硬编码 `app` |
 | Function 看到的 host | `22.0.35.50:9998` | 内网地址。绝对 URL 一律读站点设置的 `APP_ORIGIN` |
-| 登录态身份上下文 | `sdk_verdict:"accepted"`，`user_id` 长度 36，`has_org_id:false` | 平台身份路径可用，#26 前提成立 |
+| 登录态身份上下文 | `sdk_verdict:"accepted"`，`user_id` 长度 36，`has_org_id:false` | 平台身份路径可用，#27 前提成立 |
 | 匿名请求 | `sdk_verdict:"absent"`、`logged_in:false`，**200 不是 403** | 只读分支判定可靠 |
 | 应用 Cookie | `app_cookie_visible:true`（未开启 `forwardApplicationCredentials`）；第二轮补测 `Set-Cookie` 原样穿过网关、回环可见 | 自建口令与 Cookie 会话**技术上可做**，不做是取舍 |
 | 物理函数名跨部署 | 第一次 `/app-d01a21202b2d8721698c8de860972f6d5`，第二次 `/app-d01a21285470d79b29ff2ae93f36b5f2f` | **同一次发布就变了**——硬编码路径必炸，只能剥第一段 |

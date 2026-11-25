@@ -1,10 +1,11 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 interface Record {
-  id: number;
-  assignmentId: number | null;
+  id: string;
+  assignmentId: string | null;
   assignmentTitle: string | null;
   startedAt: string;
   durationSec: number;
@@ -12,7 +13,7 @@ interface Record {
 }
 
 interface PerAssignment {
-  assignmentId: number | null;
+  assignmentId: string | null;
   title: string | null;
   totalSec: number;
 }
@@ -46,7 +47,7 @@ export default function FocusView() {
   const [data, setData] = useState<FocusData | null>(null);
 
   useEffect(() => {
-    fetch("/api/focus")
+    apiFetch("/focus")
       .then((r) => r.json())
       .then(setData);
   }, []);

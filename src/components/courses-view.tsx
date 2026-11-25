@@ -1,9 +1,11 @@
 "use client";
 
+import { apiFetch, apiList } from "@/lib/api";
+import { IfWritable } from "@/components/identity";
 import { useCallback, useEffect, useState } from "react";
 
 interface Course {
-  id: number;
+  id: string;
   name: string;
   teacher: string;
   credits: number;
@@ -11,7 +13,7 @@ interface Course {
   status: string;
   semester: string;
   color: string;
-  slots: { id: number; dayOfWeek: number; startTime: string; endTime: string; location: string; weeks: string }[];
+  slots: { id: string; dayOfWeek: number; startTime: string; endTime: string; location: string; weeks: string }[];
 }
 
 interface SlotInput {
@@ -33,17 +35,16 @@ export default function CoursesView() {
   const [showForm, setShowForm] = useState(false);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/courses");
-    setCourses(await res.json());
+    setCourses(await apiList<Course>("/courses", "courses"));
   }, []);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  async function del(id: number) {
+  async function del(id: string) {
     if (!confirm("确定删除该课程？其课表与关联作业的课程绑定将一并解除。")) return;
-    await fetch(`/api/courses/${id}`, { method: "DELETE" });
+    await apiFetch(`/courses/${id}`, { method: "DELETE" });
     refresh();
   }
 
@@ -51,15 +52,17 @@ export default function CoursesView() {
     <div>
       <h1 className="mb-4 text-2xl font-bold">课程与课表</h1>
       <div className="mb-4">
-        <button
-          className="btn-primary"
-          onClick={() => {
-            setEditing(null);
-            setShowForm(!showForm);
-          }}
-        >
-          {showForm ? "收起表单" : "新建课程"}
-        </button>
+        <IfWritable>
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setEditing(null);
+              setShowForm(!showForm);
+            }}
+          >
+            {showForm ? "收起表单" : "新建课程"}
+          </button>
+        </IfWritable>
       </div>
 
       {showForm && (
@@ -102,26 +105,28 @@ export default function CoursesView() {
                   ))}
               </ul>
             )}
-            <div className="flex gap-2">
-              <button
-                className="btn-ghost !px-2 !py-1 text-xs"
-                onClick={() => {
-                  setEditing(c);
-                  setShowForm(true);
-                }}
-              >
-                编辑
-              </button>
-              <button
-                className="btn-ghost !px-2 !py-1 text-xs"
-                onClick={() => setSlotEditor(c)}
-              >
-                课表设置
-              </button>
-              <button className="btn-ghost !px-2 !py-1 text-xs text-red-600" onClick={() => del(c.id)}>
-                删除
-              </button>
-            </div>
+            <IfWritable>
+              <div className="flex gap-2">
+                <button
+                  className="btn-ghost !px-2 !py-1 text-xs"
+                  onClick={() => {
+                    setEditing(c);
+                    setShowForm(true);
+                  }}
+                >
+                  编辑
+                </button>
+                <button
+                  className="btn-ghost !px-2 !py-1 text-xs"
+                  onClick={() => setSlotEditor(c)}
+                >
+                  课表设置
+                </button>
+                <button className="btn-ghost !px-2 !py-1 text-xs text-red-600" onClick={() => del(c.id)}>
+                  删除
+                </button>
+              </div>
+            </IfWritable>
           </div>
         ))}
       </div>
@@ -153,7 +158,7 @@ function CourseForm({ initial, onDone }: { initial: Course | null; onDone: () =>
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const res = await fetch(initial ? `/api/courses/${initial.id}` : "/api/courses", {
+    const res = await apiFetch(initial ? `/courses/${initial.id}` : "/courses", {
       method: initial ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -251,7 +256,7 @@ function SlotEditor({ course, onClose, onDone }: { course: Course; onClose: () =
   async function save() {
     setSaving(true);
     setError("");
-    const res = await fetch(`/api/courses/${course.id}/slots`, {
+    const res = await apiFetch(`/courses/${course.id}/slots`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slots }),

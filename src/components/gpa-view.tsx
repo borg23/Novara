@@ -1,9 +1,10 @@
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Course {
-  id: number;
+  id: string;
   name: string;
   teacher: string;
   credits: number;
@@ -43,7 +44,7 @@ export default function GpaView() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/gpa");
+    const res = await apiFetch("/gpa");
     const d = await res.json();
     setSummary(d.summary);
     setCourses(d.courses);
@@ -60,7 +61,7 @@ export default function GpaView() {
     setPreview(null);
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch("/api/gpa/upload", { method: "POST", body: form });
+    const res = await apiFetch("/gpa/upload", { method: "POST", body: form });
     const d = await res.json();
     if (!res.ok) {
       setUploadMsg(d.error ?? "上传失败");
@@ -73,7 +74,7 @@ export default function GpaView() {
   async function confirmImport() {
     if (!preview) return;
     setImporting(true);
-    const res = await fetch("/api/gpa/upload", {
+    const res = await apiFetch("/gpa/upload", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rows: preview.rows }),
@@ -90,7 +91,7 @@ export default function GpaView() {
   }
 
   async function patchCourse(c: Course, patch: Partial<Course>) {
-    await fetch(`/api/courses/${c.id}`, {
+    await apiFetch(`/courses/${c.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),

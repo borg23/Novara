@@ -10,12 +10,13 @@
 
 | 路径 | 职责 |
 | --- | --- |
-| `src/app/` | 路由入口。`layout.tsx` 与 7 个 `page.tsx` 都是薄壳：根布局和 5 个受保护页面读取会话，2 个登录/注册页直接渲染表单 |
-| `src/app/api/` | 18 个 REST 路由文件（auth / courses / course slots / assignments / exams / tasks / focus / widgets / gpa / weather） |
-| `src/components/` | 全部 UI 与业务交互，8 个 `'use client'` 组件，请求都从这里直接发出 |
-| `src/lib/` | `db.ts`（`node:sqlite` 连接与建表）、`auth.ts`（scrypt 口令与会话 Cookie）、`gpa.ts`、`weather.ts`、`http.ts`（响应辅助） |
+| `src/app/` | 路由入口。`layout.tsx` 与 7 个 `page.tsx` 都是薄壳：根布局只挂 `IdentityProvider` 与导航，页面壳不再做任何服务端会话读取，2 个登录/注册页直接渲染表单 |
+| `src/app/api/` | 19 个 REST 路由文件（auth / courses / course slots / assignments / exams / tasks / focus / widgets / gpa / weather）——**仅本地 Next 形态使用**，Sites 形态走 `functions/` |
+| `src/components/` | 全部 UI 与业务交互，9 个 `'use client'` 组件（含 `identity.tsx`），请求一律经 `src/lib/api.ts` 发出 |
+| `src/lib/` | `db.ts`（`node:sqlite` 连接与建表）、`auth.ts`（scrypt 口令与会话 Cookie）、`gpa.ts`、`weather.ts`、`http.ts`（响应辅助）、`api.ts`（两形态共用的请求前缀 `/functions/v1/app`） |
 | `functions/` | Sites 形态的单个 Edge Function：`app.ts`（业务，纯依赖注入）、`index.ts`（平台注入薄壳）、`auth.mjs`（逐字复制插件 `assets/user-context/auth.mjs` 的身份读取）、`shared/`（Next 与 Deno 共用的纯函数） |
 | `dev/` | `local.ts` 本地薄壳：注入 fake db（落 `dev/.data.json`，已 gitignore）与四种本地身份，绑定 `127.0.0.1:8000` |
+| `web/` | 部署形态的静态壳：Vite + React 入口与 `vite.config.mts`，复用 `src/components` 与 `src/lib`，产物 `out/web/index.html` 为站点根 |
 | `data/` | 运行期生成的 `novara.db`，已 gitignore，不属于交付物 |
 
 ## 如何运行
@@ -36,6 +37,8 @@ npm run dev            # http://localhost:3000
 | 构建（本地 Next 形态） | `npm run build` | 可用，且是改动后的主验证手段（Next 构建默认做类型检查） |
 | 生产启动 | `npm start` | 可用 |
 | 本地函数薄壳 | `npm run dev:function` | 可用；数据落 `dev/.data.json`，身份切换页 <http://127.0.0.1:8000/__local> |
+| 开发（Sites 静态壳） | `npm run dev:web` | 可用；需先起 `npm run dev:function`，Vite 把 `/functions/v1/app` 代理到 `127.0.0.1:8000` |
+| 构建（Sites 静态壳） | `npm run build:web` | 可用；先 `tsc -p web` 类型检查，再产出 `out/`（`out/web/index.html` 为站点根） |
 | 测试 | 无 | 仓库没有测试框架，也没有测试用例。**不要臆造 `npm test`** |
 | Lint | 无 | 未配置 ESLint / Prettier，也没有配置文件 |
 | Function 类型检查 | `deno check functions/index.ts` | 仅用于部署形态的 Edge Function；本机 Deno 2.9.8 已就绪。**`npm run build` 不覆盖 Function** |
@@ -68,6 +71,9 @@ npm run dev            # http://localhost:3000
 - 开发态身份 fixture（`A` / `B` / `anonymous` / `error`）只允许出现在 `dev/`；**`functions/` 目录内出现 `fixture` 字样即视为缺陷**。
 - 不在本仓库引入新的运行时依赖去"顺手优化"；依赖变更只允许服务于交付目标本身。
 - `data/` 下是本地运行期数据，不提交、不上传、不作为对外截图或演示素材。
+- 依赖变更的唯一豁免：`vite` 与 `@vitejs/plugin-react` 作为 `devDependencies` 服务静态壳构建，**不得**新增任何运行时依赖，也不得把两者打进 Function 包。
+- 组件层只允许经 `src/lib/api.ts` 发请求，前缀固定 `/functions/v1/app`；本地 Next 形态靠 `next.config.mjs` 的 `rewrites` 把它映射回既有 `/api` 路由。不要在组件里写死 `/api`，也不要在部署形态引入第二套前缀。
+- 阶段二能力（GPA 与成绩单上传、专注计时与聚合、天气、批量导入）在部署形态里**只隐藏入口，不留半成品交互**：写控件由 `IfWritable` 与 `features` 共同关掉，不得留下点了只会 401 的按钮。
 
 ## 完成的定义
 

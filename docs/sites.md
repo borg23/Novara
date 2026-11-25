@@ -78,6 +78,10 @@
 - **身份方案**：平台 Qoder 上下文作为凭证，**用户记录与业务数据仍由本库 `app.users` 持有**（可解绑、可导出、可停用）。本期不建口令、不建会话表与限流表。理由：自建身份提供方在主流架构文档中被列为反模式，平台已提供 IdP，不属「别无选择」；同时避免引入「按 email / 名称自动关联账户」这类账号接管风险面。
 - **不做口令不等于做不到**：#26 实测显示应用 Cookie 在**未开启** `forwardApplicationCredentials` 时就已到达 Function 原始 header。所以这条决策的依据不是能力受限，而是边际收益：「评委没 Qoder 账号也能看」已由**匿名只读样例**覆盖（约 30 行）；「开发时切换用户测隔离」已由**本地身份 fixture**覆盖（第九节）。剩下的唯一增量是「无 Qoder 账号也能**创建**数据」——若它成为硬需求，按 expand 加回：约 350–400 行 Function、3 张表（`sessions` / `auth_limiter` / `users` 口令列）、约 1 人日，并且必须同时实现「绑定只能在已认证会话内显式发起」这条防接管规则。
 
+- **前端形态（已定，2026-11-25）**：部署形态改用 **Vite + React 静态壳**（`web/`），Next.js 形态保留用于本地开发与演示。判据不是偏好，而是三条硬事实：① 静态导出与 18 个 route handler 不能共存于一个产物；② `next/link` / `useRouter` / `usePathname` 在静态壳里没有对应物；③ 本地函数薄壳要求 Vite 代理 `/functions/v1/app`。代价是迁移期仓库里有两套页面壳，共用同一批 `src/components` 与 `src/lib`。产物落在 `out/`，站点根是 `out/web/index.html`（`webDirectory` 取 `out/web`）。
+- **`/exams` 归阶段一**：8 张表里已有 `exams`，作业页的「考试记录」标签是既有可见功能，隐藏它等于砍掉已交付能力；实现成本是两个 handler。
+- **匿名样例的落地方式**：Function 内以固定 uuid JIT 建「示例同学」并写入样例课程 / 课表 / 作业 / 任务 / 考试，**不改审批用的 `docs/sites-schema.sql`**；样例写入失败不放大成 5xx，只让访客读到空列表。
+
 **待实测（不能靠猜实现）**
 
 - **`function_backend` 查询客户端的能力面**：官方范例只演示了 `select` / `eq` / `order` / `limit` / `insert` / `insertIfAbsent` / `update` / `delete`。面板与 GPA 需要的 `or` / `in` / 范围比较**未经证实，必须实测**，不能按 Supabase 全集假设。
@@ -114,8 +118,29 @@
 | 配额 | 全程无 `sites_quota_exceeded` | 两个上限仍未知；探针已使名下站点 3 → 4，且很可能消耗了一个后端名额 |
 | 本地检查 | `deno check functions/index.ts` exit=0（Deno 2.9.8，装在 `D:\Programs\Deno`） | Function 有提交前类型检查；`npm run build` 只覆盖前端，二者不可互替 |
 
-## 八、红线清单（实现前对照，超出即返工）
+### 2026-11-25 · 阶段一本地实测（`dev/local.ts` + Vite 壳，**未部署**）
 
+只证明业务逻辑与契约形状，不证明 RLS、配额、Set-Cookie、外部放行（见第九节边界说明）。
+
+| 关注点 | 实测结果 | 对实现的影响 |
+| --- | --- | --- |
+| 路由匹配 | 本地以 `/functions/v1/app/<业务路径>` 进入，剥掉 `functions/v1` 与函数名段后命中；未知路径 `404 {"error":"接口不存在"}` | 与 #26 的物理名剥段口径一致，未硬编码 `app` |
+| 方法约束 | `POST /auth/me` → `405` 且带 `allow: GET` | 405 由 Function 自己补，不再依赖 Next 代答 |
+| 匿名只读 | `GET /auth/me` → `200 {"readOnly":true}`；业务 GET 返回样例 owner 数据并带 `x-novara-read-only: true` | 数组响应无法携带 `readOnly` 字段，改用响应头 + 对象响应内嵌两种形态并存 |
+| 匿名写保护 | `POST/PATCH/PUT/DELETE` → `401 {"error":"登录后才能编辑"}` | 前端据此关掉写控件，不留 401 按钮 |
+| 两账号隔离 | fixture A 与 B 各自的 `users.id` 下数据互不可见；B 改 A 的课程 → `404`，B 挂 A 的课程建作业 → `400 所选课程不存在` | owner 谓词逐条生效，跨用户即视为不存在 |
+| 课表补偿式替换 | 注入「删除旧槽位失败」后：`503`，课表变成 **重复行而非空课表**；同载荷重试收敛为精确 2 行 | 「已定 4」在无事务环境下的顺序成立 |
+| 重名课程 | `POST /courses` 命中 `UNIQUE(user_id,name)` → `409 课程名已存在，请改用其他名称` | 约束先于提示：本地 fake db 复刻了该唯一键 |
+| 「今天」判定 | `scope=today` / `overdue` 以 Asia/Shanghai 日期字符串比较，与运行环境时区无关 | 「已定 3」落地；样例数据里同时存在今日与逾期项 |
+| 面板配置 | `PUT /widgets` 走 `insertIfAbsent` + `update` 两步；`order` 逐项过滤到白名单 | 无 `ON CONFLICT DO UPDATE` 的等价实现 |
+| 类型门禁 | `deno check functions/index.ts` 与 `deno check dev/local.ts` 均 exit=0；`npm run build`、`npm run build:web` 均通过 | 三者不可互替 |
+
+**本轮对契约的两处实现方式修正**（语义不变，已同步 `docs/sites-api.md`）：
+
+1. 过滤与排序下移到 Function 内存：阶段一所有查询只用已证实可用的 `eq`（外加 `select` / `order` / `limit`），`today` / `overdue` / 排序在自有行集上内存完成，避免押注未实测的 `or` / `in` / 范围比较。
+2. `GET /auth/me` 与 `POST /auth/session` 共用同一套 JIT：任一先到都能完成绑定，前端启动只需一次请求；`/auth/session` 仍按契约保留。
+
+## 八、红线清单（实现前对照，超出即返工）
 ### A. 形态级——做不到，不是麻烦
 
 | # | 红线 | 对本项目的具体后果 |

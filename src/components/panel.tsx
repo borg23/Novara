@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch, apiList } from "@/lib/api";
 import { useCallback, useEffect, useState } from "react";
 import {
   WIDGETS,
@@ -8,6 +9,7 @@ import {
   type FocusData,
   type GpaSummaryData,
 } from "@/components/widgets";
+import { IfWritable, useIdentity } from "@/components/identity";
 
 interface WidgetConfig {
   columns: number;
@@ -24,6 +26,7 @@ const EMPTY_DATA: WidgetData = {
 };
 
 export default function Panel() {
+  const { account, features } = useIdentity();
   const [config, setConfig] = useState<WidgetConfig>({ columns: 2, style: "card", order: Object.keys(WIDGETS) });
   const [data, setData] = useState<WidgetData>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
@@ -31,28 +34,33 @@ export default function Panel() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
+  const shown = (name: string) =>
+    (name !== "weather" || features.weather) &&
+    (name !== "timer" || features.focus) &&
+    (name !== "gpaSummary" || features.gpa);
+
   const refresh: RefreshFn = useCallback(async () => {
-    const [assignments, tasks, courses, focus, gpa, widgets] = await Promise.all([
-      fetch("/api/assignments").then((r) => r.json()),
-      fetch("/api/tasks").then((r) => r.json()),
-      fetch("/api/courses").then((r) => r.json()),
-      fetch("/api/focus").then((r) => r.json()),
-      fetch("/api/gpa").then((r) => r.json()),
-      fetch("/api/widgets").then((r) => r.json()),
+    const [assignments, tasks, courses, widgets, focus, gpa] = await Promise.all([
+      apiList("/assignments", "assignments"),
+      apiList("/tasks", "tasks"),
+      apiList("/courses", "courses"),
+      apiFetch("/widgets").then((r) => r.json()),
+      features.focus ? apiFetch("/focus").then((r) => r.json()) : null,
+      features.gpa ? apiFetch("/gpa").then((r) => r.json()) : null,
     ]);
     setData({
       tasks: tasks as WidgetData["tasks"],
       assignments: assignments as WidgetData["assignments"],
       courses: courses as WidgetData["courses"],
-      focus: (focus as { records: []; todayTotalSec: number; perAssignment: [] }) as FocusData,
-      gpa: gpa.summary as GpaSummaryData,
+      focus: (focus ?? EMPTY_DATA.focus) as FocusData,
+      gpa: gpa ? (gpa.summary as GpaSummaryData) : null,
     });
     setConfig((prev) => ({
       columns: widgets.columns ?? prev.columns,
       style: widgets.style ?? prev.style,
-      order: widgets.order ?? prev.order,
+      order: Array.isArray(widgets.order) ? widgets.order.filter(shown) : prev.order,
     }));
-  }, []);
+  }, [features.focus, features.gpa, features.weather]);
 
   useEffect(() => {
     refresh().finally(() => setLoading(false));
@@ -61,7 +69,7 @@ export default function Panel() {
   async function saveConfig(next: Partial<WidgetConfig>) {
     const merged = { ...config, ...next };
     setConfig(merged);
-    await fetch("/api/widgets", {
+    await apiFetch("/widgets", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(merged),
@@ -76,53 +84,66 @@ export default function Panel() {
     saveConfig({ order });
   }
 
-  const hiddenWidgets = Object.keys(WIDGETS).filter((w) => !config.order.includes(w));
+  const hiddenWidgets = Object.keys(WIDGETS).filter((w) => shown(w) && !config.order.includes(w));
 
   if (loading) {
     return <p className="py-12 text-center text-sm text-stone-400">面板加载中…</p>;
   }
 
+  const dateStr = new Date().toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  });
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <button
-          className={editMode ? "btn-primary" : "btn-ghost"}
-          onClick={() => setEditMode(!editMode)}
-        >
-          {editMode ? "完成" : "自定义面板"}
-        </button>
-        {editMode && (
-          <>
-            <div className="flex items-center gap-1 text-sm">
-              <span className="text-stone-500">列数</span>
-              {[1, 2, 3].map((n) => (
-                <button
-                  key={n}
-                  className={config.columns === n ? "btn-primary !px-2.5" : "btn-ghost !px-2.5"}
-                  onClick={() => saveConfig({ columns: n })}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-1 text-sm">
-              <span className="text-stone-500">样式</span>
-              <button
-                className={config.style === "card" ? "btn-primary !px-2.5" : "btn-ghost !px-2.5"}
-                onClick={() => saveConfig({ style: "card" })}
-              >
-                卡片
-              </button>
-              <button
-                className={config.style === "flat" ? "btn-primary !px-2.5" : "btn-ghost !px-2.5"}
-                onClick={() => saveConfig({ style: "flat" })}
-              >
-                扁平
-              </button>
-            </div>
-          </>
-        )}
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold">你好，{account?.displayName || "同学"}</h1>
+        <p className="text-sm text-stone-500">{dateStr}</p>
       </div>
+      <IfWritable>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            className={editMode ? "btn-primary" : "btn-ghost"}
+            onClick={() => setEditMode(!editMode)}
+          >
+            {editMode ? "完成" : "自定义面板"}
+          </button>
+          {editMode && (
+            <>
+              <div className="flex items-center gap-1 text-sm">
+                <span className="text-stone-500">列数</span>
+                {[1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    className={config.columns === n ? "btn-primary !px-2.5" : "btn-ghost !px-2.5"}
+                    onClick={() => saveConfig({ columns: n })}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1 text-sm">
+                <span className="text-stone-500">样式</span>
+                <button
+                  className={config.style === "card" ? "btn-primary !px-2.5" : "btn-ghost !px-2.5"}
+                  onClick={() => saveConfig({ style: "card" })}
+                >
+                  卡片
+                </button>
+                <button
+                  className={config.style === "flat" ? "btn-primary !px-2.5" : "btn-ghost !px-2.5"}
+                  onClick={() => saveConfig({ style: "flat" })}
+                >
+                  扁平
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </IfWritable>
 
       {editMode && hiddenWidgets.length > 0 && (
         <div className="card mb-4 p-3">

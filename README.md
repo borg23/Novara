@@ -19,28 +19,36 @@
 
 ## 技术栈
 
-- Next.js 15（App Router）+ TypeScript
+- Next.js 15（App Router）+ TypeScript —— 本地形态：页面壳 + `src/app/api/**` 路由
+- Vite + React —— 部署形态的静态壳（`web/`），与 Next 共用 `src/components` 与 `src/lib`
+- Deno Edge Function —— 部署形态的服务端（`functions/`），经链式查询客户端访问平台数据库
 - SQLite（Node 内置 `node:sqlite`，零原生依赖；数据库文件位于 `data/novara.db`，自动创建）
 - Tailwind CSS v3
-- 认证：会话 Cookie（HttpOnly），密码 scrypt 哈希；所有数据按 `user_id` 隔离
+- 认证：本地形态是会话 Cookie（HttpOnly）+ scrypt 口令；部署形态用平台注入的 Qoder 身份，用户记录仍由本库 `users` 持有。两种形态都按用户隔离
 
 ## 快速开始
 
-要求：Node.js ≥ 22.5（推荐 24，自带 `node:sqlite`）。
+要求：Node.js ≥ 22.5（推荐 24，自带 `node:sqlite`）；跑部署形态还需 Deno ≥ 2.2（本机 2.9.8）。
+
+### 本地形态（Next + SQLite，可注册可登录）
 
 ```bash
 npm install
-npm run dev
+npm run dev            # http://localhost:3000
 ```
 
-打开 http://localhost:3000 ，注册账号即可使用。
+打开 http://localhost:3000 ，注册账号即可使用。构建与生产启动用 `npm run build` / `npm start`。
 
-构建与生产启动：
+### 部署形态（Vite 静态壳 + Deno Function，本地等价联调）
 
 ```bash
-npm run build
-npm start
+npm run dev:function   # 终端 1：Deno 薄壳，监听 127.0.0.1:8000
+npm run dev:web        # 终端 2：Vite 壳，把 /functions/v1/app 代理到 8000
 ```
+
+打开 http://127.0.0.1:5173 就是部署形态的行为：未登录读到的是公开示例数据，写控件隐藏。切换本地身份（账号 A / 账号 B / 未登录 / 上下文非法）访问 http://127.0.0.1:8000/__local 。
+
+静态产物（站点根为 `out/web/index.html`）用 `npm run build:web`；Function 的提交前类型检查用 `deno check functions/index.ts`，两者不可互替。
 
 ## 环境变量
 
@@ -96,9 +104,16 @@ npm start
 ```
 src/
   app/
-    api/            # REST API（auth/courses/assignments/exams/tasks/focus/widgets/gpa/weather）
-    (auth)/login|register
-    homework/ courses/ gpa/ focus/   # 功能页
-  components/       # nav / panel / widgets / 各页面视图
-  lib/              # db / auth / gpa / weather / http
+    api/            # 本地形态 REST API（auth/courses/assignments/exams/tasks/focus/widgets/gpa/weather）
+    login|register
+    homework/ courses/ gpa/ focus/   # 功能页（薄壳，不读会话）
+  components/       # nav / panel / widgets / identity / 各页面视图（两种形态共用）
+  lib/              # db / auth / gpa / weather / http / api（请求前缀）
+functions/
+  app.ts            # 部署形态业务逻辑，纯依赖注入
+  index.ts          # 平台注入薄壳（Deno.serve）
+  auth.mjs          # 平台身份上下文读取（逐字复制插件 user-context 范例）
+  shared/           # 纯函数，Next 与 Deno 共用一份
+dev/local.ts        # 本地薄壳：fake db + 身份切换，127.0.0.1:8000
+web/                # 部署形态静态壳（Vite + React），产物 out/
 ```

@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import { AppLink, IfWritable, useIdentity } from "@/components/identity";
 import { useEffect, useState } from "react";
 import { CITIES } from "@/lib/weather";
 
@@ -12,7 +13,7 @@ export interface Slot {
 }
 
 export interface CourseRow {
-  id: number;
+  id: string;
   name: string;
   teacher: string;
   credits: number;
@@ -24,28 +25,28 @@ export interface CourseRow {
 }
 
 export interface AssignmentRow {
-  id: number;
+  id: string;
   title: string;
   description: string;
   dueDate: string | null;
   status: string;
   priority: number;
-  courseId: number | null;
+  courseId: string | null;
   courseName: string | null;
   courseColor: string | null;
 }
 
 export interface TaskRow {
-  id: number;
+  id: string;
   title: string;
   dueDate: string | null;
   status: string;
 }
 
 export interface FocusData {
-  records: { id: number; assignmentId: number | null; assignmentTitle: string | null; startedAt: string; durationSec: number; note: string }[];
+  records: { id: string; assignmentId: string | null; assignmentTitle: string | null; startedAt: string; durationSec: number; note: string }[];
   todayTotalSec: number;
-  perAssignment: { assignmentId: number | null; title: string | null; totalSec: number }[];
+  perAssignment: { assignmentId: string | null; title: string | null; totalSec: number }[];
 }
 
 export interface GpaSummaryData {
@@ -83,13 +84,14 @@ export function fmtDuration(sec: number): string {
 
 /* ---------- 今日任务 ---------- */
 function TodayTasks({ data, refresh }: { data: WidgetData; refresh: RefreshFn }) {
+  const { readOnly } = useIdentity();
   const [title, setTitle] = useState("");
   const today = todayStr();
   const list = data.tasks.filter((t) => t.status === "todo" && (t.dueDate === null || t.dueDate <= today));
   async function add(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    await fetch("/api/tasks", {
+    await apiFetch("/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: title.trim(), dueDate: today }),
@@ -98,30 +100,32 @@ function TodayTasks({ data, refresh }: { data: WidgetData; refresh: RefreshFn })
     refresh();
   }
   async function toggle(t: TaskRow) {
-    await fetch(`/api/tasks/${t.id}`, {
+    await apiFetch(`/tasks/${t.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: t.status === "done" ? "todo" : "done" }),
     });
     refresh();
   }
-  async function del(id: number) {
-    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+  async function del(id: string) {
+    await apiFetch(`/tasks/${id}`, { method: "DELETE" });
     refresh();
   }
   return (
     <div className="space-y-2">
-      <form onSubmit={add} className="flex gap-2">
-        <input
-          className="input"
-          placeholder="添加今日任务…"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <button type="submit" className="btn-primary shrink-0">
-          添加
-        </button>
-      </form>
+      <IfWritable>
+        <form onSubmit={add} className="flex gap-2">
+          <input
+            className="input"
+            placeholder="添加今日任务…"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <button type="submit" className="btn-primary shrink-0">
+            添加
+          </button>
+        </form>
+      </IfWritable>
       {list.length === 0 && <p className="text-sm text-stone-400">今天没有待办任务</p>}
       <ul className="space-y-1">
         {list.map((t) => (
@@ -129,14 +133,17 @@ function TodayTasks({ data, refresh }: { data: WidgetData; refresh: RefreshFn })
             <input
               type="checkbox"
               checked={t.status === "done"}
+              disabled={readOnly}
               onChange={() => toggle(t)}
               className="h-4 w-4 accent-indigo-600"
             />
             <span className="flex-1">{t.title}</span>
             {t.dueDate && t.dueDate < today && <span className="text-xs text-red-500">已逾期</span>}
-            <button onClick={() => del(t.id)} className="hidden text-stone-400 hover:text-red-600 group-hover:block">
-              删除
-            </button>
+            <IfWritable>
+              <button onClick={() => del(t.id)} className="hidden text-stone-400 hover:text-red-600 group-hover:block">
+                删除
+              </button>
+            </IfWritable>
           </li>
         ))}
       </ul>
@@ -146,11 +153,12 @@ function TodayTasks({ data, refresh }: { data: WidgetData; refresh: RefreshFn })
 
 /* ---------- 今日作业 ---------- */
 function HomeworkWidget({ data, refresh }: { data: WidgetData; refresh: RefreshFn }) {
+  const { readOnly } = useIdentity();
   const today = todayStr();
   const todayList = data.assignments.filter((a) => a.status === "todo" && a.dueDate === today);
   const upcoming = data.assignments.filter((a) => a.status === "todo" && a.dueDate && a.dueDate > today).length;
   async function toggle(a: AssignmentRow) {
-    await fetch(`/api/assignments/${a.id}`, {
+    await apiFetch(`/assignments/${a.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: a.status === "done" ? "todo" : "done" }),
@@ -166,6 +174,7 @@ function HomeworkWidget({ data, refresh }: { data: WidgetData; refresh: RefreshF
             <input
               type="checkbox"
               checked={a.status === "done"}
+              disabled={readOnly}
               onChange={() => toggle(a)}
               className="h-4 w-4 accent-indigo-600"
             />
@@ -180,9 +189,9 @@ function HomeworkWidget({ data, refresh }: { data: WidgetData; refresh: RefreshF
       </ul>
       <div className="flex items-center justify-between border-t border-stone-100 pt-2 text-xs text-stone-500">
         <span>未来 {upcoming} 项待完成作业</span>
-        <Link href="/homework" className="font-medium text-indigo-600 hover:underline">
+        <AppLink href="/homework" className="font-medium text-indigo-600 hover:underline">
           前往作业管理
-        </Link>
+        </AppLink>
       </div>
     </div>
   );
@@ -320,7 +329,7 @@ function WeatherWidget() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    fetch(`/api/weather?city=${cityId}`)
+    apiFetch(`/weather?city=${cityId}`)
       .then((r) => r.json())
       .then((d) => {
         if (alive) setWeather(d);
@@ -374,7 +383,7 @@ function WeatherWidget() {
 
 /* ---------- 计时器 ---------- */
 function TimerWidget({ data, refresh }: { data: WidgetData; refresh: RefreshFn }) {
-  const [assignmentId, setAssignmentId] = useState<number | "">("");
+  const [assignmentId, setAssignmentId] = useState<string>("");
   const [note, setNote] = useState("");
   const [running, setRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -390,7 +399,7 @@ function TimerWidget({ data, refresh }: { data: WidgetData; refresh: RefreshFn }
     const sec = seconds;
     setSeconds(0);
     if (sec < 1) return;
-    const res = await fetch("/api/focus", {
+    const res = await apiFetch("/focus", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -423,7 +432,7 @@ function TimerWidget({ data, refresh }: { data: WidgetData; refresh: RefreshFn }
       <select
         className="input"
         value={assignmentId}
-        onChange={(e) => setAssignmentId(e.target.value === "" ? "" : Number(e.target.value))}
+        onChange={(e) => setAssignmentId(e.target.value)}
         disabled={running}
       >
         <option value="">不绑定作业</option>
@@ -487,9 +496,9 @@ function GpaWidget({ data }: { data: WidgetData }) {
         </div>
       </div>
       <p className="text-xs text-stone-500">计划中学分共 {g.plannedCredits}</p>
-      <Link href="/gpa" className="text-xs font-medium text-indigo-600 hover:underline">
+      <AppLink href="/gpa" className="text-xs font-medium text-indigo-600 hover:underline">
         前往 GPA 计算器
-      </Link>
+      </AppLink>
     </div>
   );
 }

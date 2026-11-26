@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Novara · function_backend 能力探针</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { margin: 0; font: 14px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
+      main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p { margin: 0 0 16px; color: #94a3b8; }
+      .bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+      button { border: 1px solid #334155; background: #1e293b; color: #e2e8f0; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+      button:hover { background: #334155; }
+      button.primary { background: #2563eb; border-color: #2563eb; }
+      #status { min-height: 22px; margin-bottom: 8px; color: #93c5fd; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th, td { border-bottom: 1px solid #1e293b; padding: 6px 8px; text-align: left; vertical-align: top; }
+      th { color: #94a3b8; font-weight: 600; }
+      td.ok { color: #86efac; }
+      td.fail { color: #fca5a5; }
+      pre { margin: 16px 0 0; padding: 16px; background: #020617; border: 1px solid #1e293b; border-radius: 8px; overflow: auto; max-height: 60vh; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Novara · function_backend 能力探针</h1>
+      <p>仅合成数据，仅用于 #35 部署环境实测。不是参赛作品，不要对外分享地址。</p>
+
+      <div class="bar">
+        <button class="primary" data-action="health">Health</button>
+        <button data-action="seed">Seed 200 rows</button>
+        <button data-action="introspect">Introspect</button>
+        <button data-action="all">Run all</button>
+        <button data-group="predicates">predicates</button>
+        <button data-group="projection">projection</button>
+        <button data-group="paging">paging</button>
+        <button data-group="app">app</button>
+        <button data-group="aggregate">aggregate</button>
+      </div>
+
+      <div id="status">就绪</div>
+      <div id="table"></div>
+      <pre id="output">等待运行。</pre>
+    </main>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      const tableEl = document.getElementById("table");
+      const outputEl = document.getElementById("output");
+      const base = "/functions/v1/app/probe";
+
+      async function call(path, options) {
+        const started = performance.now();
+        const response = await fetch(path, { credentials: "same-origin", cache: "no-store", ...options });
+        const text = await response.text();
+        let body;
+        try { body = JSON.parse(text); } catch { body = text; }
+        return { status: response.status, body, ms: Math.round(performance.now() - started) };
+      }
+
+      function renderTable(results) {
+        if (!Array.isArray(results)) { tableEl.innerHTML = ""; return; }
+        const rows = results.map((result) => {
+          const error = result.error ? JSON.stringify(result.error) : "";
+          return `<tr>
+            <td>${escapeHtml(result.name)}</td>
+            <td>${escapeHtml(result.api)}</td>
+            <td>${result.httpStatus}</td>
+            <td class="${result.ok ? "ok" : "fail"}">${result.ok ? "ok" : "fail"}</td>
+            <td>${result.count}</td>
+            <td>${result.bodyBytes}</td>
+            <td>${result.durationMs}ms</td>
+            <td>${escapeHtml(error)}</td>
+          </tr>`;
+        }).join("");
+        tableEl.innerHTML = `<table><thead><tr>
+          <th>case</th><th>api</th><th>http</th><th>结果</th><th>条数</th><th>字节</th><th>耗时</th><th>error</th>
+        </tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[char]);
+      }
+
+      async function run(path, options) {
+        statusEl.textContent = "运行中…";
+        tableEl.innerHTML = "";
+        try {
+          const result = await call(path, options);
+          statusEl.textContent = `HTTP ${result.status} · ${result.ms}ms`;
+          outputEl.textContent = JSON.stringify(result.body, null, 2);
+          if (result.body && Array.isArray(result.body.results)) renderTable(result.body.results);
+        } catch (error) {
+          statusEl.textContent = "请求失败";
+          outputEl.textContent = String(error && error.stack ? error.stack : error);
+        }
+      }
+
+      document.querySelectorAll("[data-action]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const action = button.getAttribute("data-action");
+          if (action === "health") return run(`${base}/health`);
+          if (action === "seed") return run(`${base}/seed`, { method: "POST" });
+          if (action === "introspect") return run(`${base}/introspect`);
+          if (action === "all") return run(`${base}/all`);
+        });
+      });
+
+      document.querySelectorAll("[data-group]").forEach((button) => {
+        button.addEventListener("click", () => run(`${base}/all?group=${encodeURIComponent(button.getAttribute("data-group"))}`));
+      });
+    </script>
+  </body>
+</html>

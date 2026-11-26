@@ -1,0 +1,4 @@
+*.qoder.site
+.qoder/
+evidence/
+.local/

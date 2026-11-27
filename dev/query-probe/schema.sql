@@ -6,6 +6,7 @@ CREATE TABLE app.probe_rows (
   seq           integer NOT NULL,
   status        text NOT NULL,
   due_date      text NOT NULL,
+  due_date_opt  text,
   started_at    timestamptz NOT NULL,
   duration_sec  integer NOT NULL,
   assignment_id uuid,
@@ -17,3 +18,4 @@ CREATE TABLE app.probe_rows (
 CREATE INDEX probe_rows_owner_seq_idx ON app.probe_rows (owner_id, seq);
 CREATE INDEX probe_rows_owner_started_idx ON app.probe_rows (owner_id, started_at);
 CREATE INDEX probe_rows_owner_due_idx ON app.probe_rows (owner_id, status, due_date);
+CREATE INDEX probe_rows_owner_due_opt_idx ON app.probe_rows (owner_id, due_date_opt);

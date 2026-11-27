@@ -7,7 +7,7 @@
     <style>
       :root { color-scheme: light dark; }
       body { margin: 0; font: 14px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
-      main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+      main { max-width: 1200px; margin: 0 auto; padding: 24px; }
       h1 { font-size: 20px; margin: 0 0 4px; }
       p { margin: 0 0 16px; color: #94a3b8; }
       .bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
@@ -30,9 +30,9 @@
 
       <div class="bar">
         <button class="primary" data-action="health">Health</button>
-        <button data-action="seed">Seed 200 rows</button>
+        <button data-action="seed">Seed 1200 + 5 rows</button>
         <button data-action="introspect">Introspect</button>
-        <button data-action="all">Run all</button>
+        <button data-action="all">Run all（逐组）</button>
         <button data-group="predicates">predicates</button>
         <button data-group="projection">projection</button>
         <button data-group="paging">paging</button>
@@ -60,14 +60,28 @@
         return { status: response.status, body, ms: Math.round(performance.now() - started) };
       }
 
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[char]);
+      }
+
       function renderTable(results) {
         if (!Array.isArray(results)) { tableEl.innerHTML = ""; return; }
         const rows = results.map((result) => {
-          const error = result.error ? JSON.stringify(result.error) : "";
+          const check = result.check ? (result.check.ok ? "ok" : "fail") : "-";
+          const checkClass = result.check ? (result.check.ok ? "ok" : "fail") : "";
+          const error = result.error
+            ? JSON.stringify(result.error)
+            : result.check && !result.check.ok
+              ? result.check.reason
+              : "";
           return `<tr>
             <td>${escapeHtml(result.name)}</td>
             <td>${escapeHtml(result.api)}</td>
             <td>${result.httpStatus}</td>
+            <td class="${result.queryOk ? "ok" : "fail"}">${result.queryOk ? "ok" : "fail"}</td>
+            <td class="${checkClass}">${check}</td>
             <td class="${result.ok ? "ok" : "fail"}">${result.ok ? "ok" : "fail"}</td>
             <td>${result.count}</td>
             <td>${result.bodyBytes}</td>
@@ -76,14 +90,8 @@
           </tr>`;
         }).join("");
         tableEl.innerHTML = `<table><thead><tr>
-          <th>case</th><th>api</th><th>http</th><th>结果</th><th>条数</th><th>字节</th><th>耗时</th><th>error</th>
+          <th>case</th><th>api</th><th>http</th><th>query</th><th>check</th><th>总</th><th>条数</th><th>字节</th><th>耗时</th><th>error / check.reason</th>
         </tr></thead><tbody>${rows}</tbody></table>`;
-      }
-
-      function escapeHtml(value) {
-        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
-          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-        })[char]);
       }
 
       async function run(path, options) {
@@ -100,13 +108,43 @@
         }
       }
 
+      async function runAll() {
+        const groups = ["predicates", "projection", "paging", "app", "aggregate"];
+        const merged = [];
+        tableEl.innerHTML = "";
+        for (const group of groups) {
+          statusEl.textContent = `运行 ${group}…`;
+          try {
+            const result = await call(`${base}/all?group=${encodeURIComponent(group)}`);
+            if (result.body && Array.isArray(result.body.results)) merged.push(...result.body.results);
+          } catch (error) {
+            merged.push({
+              name: group,
+              api: "(group request)",
+              httpStatus: 0,
+              queryOk: false,
+              checkOk: false,
+              ok: false,
+              count: 0,
+              bodyBytes: 0,
+              durationMs: 0,
+              error: String(error),
+              check: null,
+            });
+          }
+          renderTable(merged);
+          outputEl.textContent = JSON.stringify({ groups, results: merged }, null, 2);
+        }
+        statusEl.textContent = "全部完成";
+      }
+
       document.querySelectorAll("[data-action]").forEach((button) => {
         button.addEventListener("click", () => {
           const action = button.getAttribute("data-action");
           if (action === "health") return run(`${base}/health`);
           if (action === "seed") return run(`${base}/seed`, { method: "POST" });
           if (action === "introspect") return run(`${base}/introspect`);
-          if (action === "all") return run(`${base}/all`);
+          if (action === "all") return runAll();
         });
       });
 

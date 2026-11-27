@@ -46,6 +46,8 @@ npm run dev            # http://localhost:3000
 ## 工程规范
 
 - 改动走分支 + PR，`main` 不接受直接 push。
+- PR 由 `.github/CODEOWNERS` 自动请求 `@borg23/project-novara` 审核；`main` 要求 1 个批准 + code owner 批准，**对管理员同样生效**，所以作者无法合并自己的 PR。
+- 处于 `CHANGES_REQUESTED` 状态的 PR 不允许「先合并再补说明」。要么补评审要求的证据后请人 re-review，要么由评审人主动改为批准并在 issue 里记下这个例外。
 - 分支前缀：`feat/`、`fix/`、`docs/`、`migrate/`。
 - commit 用 Conventional Commits 描述中文内容，关联 issue 用 `(Closes #N)`；一条 commit 只关闭一条可独立验证的 issue。
 - 新 issue 用 `.github/ISSUE_TEMPLATE/` 的模板：一个 issue 只装一个可独立验证的工作单元，关闭前须在评论里附达成证据。

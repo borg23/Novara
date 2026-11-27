@@ -197,8 +197,17 @@ export function application(deps: AppDeps) {
       db.from("users").insertIfAbsent(created, { onConflict: "qoder_user_id" }).select("id")
     );
     if (inserted.length > 0) {
-      await write(db.from("widget_configs").insert({ user_id: str(inserted[0].id) })).catch(() => {});
-      return str(inserted[0].id);
+      const userId = str(inserted[0].id);
+      // 与 assignments/tasks 同一条原则：不依赖库列默认值，默认面板配置显式落库。
+      const config: Row = {
+        user_id: userId,
+        columns: DEFAULT_WIDGET_COLUMNS,
+        style: DEFAULT_WIDGET_STYLE,
+        order_json: JSON.stringify(defaultWidgetOrder()),
+        updated_at: deps.now().toISOString(),
+      };
+      await write(db.from("widget_configs").insert(config)).catch(() => {});
+      return userId;
     }
     // insertIfAbsent 返回空说明并发已命中同一绑定，改为再读一次而不是重试写。
     const again = await read(
@@ -359,7 +368,7 @@ export function application(deps: AppDeps) {
   async function coursesWithSlots(userId: string): Promise<Row[]> {
     const courses = (
       await read(db.from("courses").select(COURSE_COLUMNS).eq("user_id", userId).limit(ROW_CAP))
-    ).map(courseOf);
+    ).map(courseOf).sort(byText("name"));
     const slotLists = await Promise.all(
       courses.map((course) =>
         read(

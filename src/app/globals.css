@@ -43,9 +43,6 @@
   .panel-capsule .panel-flat {
     @apply rounded-3xl;
   }
-  .panel-capsule .btn {
-    @apply rounded-full;
-  }
   .panel-capsule .btn-primary,
   .panel-capsule .btn-ghost,
   .panel-capsule .btn-danger {

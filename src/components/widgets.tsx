@@ -243,7 +243,7 @@ function CalendarWidget({ data }: { data: WidgetData }) {
             <button
               key={ds}
               onClick={() => setSelected(selected === ds ? null : ds)}
-              className={`relative rounded-md py-1 transition-colors hover:bg-indigo-50 ${
+              className={`relative rounded-lg py-1 transition-colors hover:bg-indigo-50 ${
                 ds === today ? "bg-indigo-600 text-white hover:bg-indigo-600" : ds === selected ? "bg-indigo-100" : ""
               }`}
             >
@@ -366,7 +366,7 @@ function WeatherWidget() {
           </div>
           <div className="grid grid-cols-3 gap-1 text-center text-xs">
             {(weather.daily ?? []).slice(0, 3).map((d) => (
-              <div key={d.date} className="rounded-lg bg-stone-50 py-1.5">
+              <div key={d.date} className="rounded-xl bg-stone-50 py-1.5">
                 <p className="text-stone-500">{d.date.slice(5).replace("-", "/")}</p>
                 <p className="font-medium">{d.text}</p>
                 <p className="text-stone-500">

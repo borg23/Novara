@@ -98,7 +98,7 @@ export default function Panel() {
   });
 
   return (
-    <div>
+    <div className="panel-capsule">
       <div className="mb-5">
         <h1 className="text-2xl font-bold">你好，{account?.displayName || "同学"}</h1>
         <p className="text-sm text-stone-500">{dateStr}</p>

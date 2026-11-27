@@ -37,4 +37,21 @@
   .badge {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
   }
+  .panel-capsule .card {
+    @apply rounded-3xl;
+  }
+  .panel-capsule .panel-flat {
+    @apply rounded-3xl;
+  }
+  .panel-capsule .btn {
+    @apply rounded-full;
+  }
+  .panel-capsule .btn-primary,
+  .panel-capsule .btn-ghost,
+  .panel-capsule .btn-danger {
+    @apply rounded-full;
+  }
+  .panel-capsule .input {
+    @apply rounded-full;
+  }
 }

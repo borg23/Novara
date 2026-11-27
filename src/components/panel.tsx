@@ -194,7 +194,7 @@ export default function Panel() {
                 setDragOverIdx(null);
               }}
               className={`${
-                isCard ? "card p-4" : "border-b border-stone-200 pb-4"
+                isCard ? "card p-4" : "panel-flat"
               } ${isDragging ? "opacity-50 outline-2 outline-dashed outline-indigo-400 outline-offset-2" : ""} ${
                 isDropTarget ? "bg-indigo-100/70 ring-2 ring-inset ring-indigo-500" : ""
               }`}

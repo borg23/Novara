@@ -48,8 +48,11 @@ export default function FocusView() {
 
   useEffect(() => {
     apiFetch("/focus")
-      .then((r) => r.json())
-      .then(setData);
+      .then(async (r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && Array.isArray(d.perAssignment) && Array.isArray(d.records)) setData(d);
+      })
+      .catch(() => {});
   }, []);
 
   if (!data) {

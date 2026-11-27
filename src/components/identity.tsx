@@ -42,12 +42,18 @@ const IdentityContext = createContext<IdentityState>({
   features: FULL_FEATURES,
 });
 
+const NO_PUBLIC_PATHS: string[] = [];
+
+function isPublicPath(publicKey: string, path: string): boolean {
+  return publicKey !== "" && publicKey.split("|").includes(path);
+}
+
 export function IdentityProvider({
   children,
   loginHref,
   features = FULL_FEATURES,
   requireLogin = false,
-  publicPaths = [],
+  publicPaths = NO_PUBLIC_PATHS,
 }: {
   children: React.ReactNode;
   loginHref: string;
@@ -58,6 +64,8 @@ export function IdentityProvider({
   const [ready, setReady] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
   const [invalid, setInvalid] = useState(false);
+  // 依赖数组里必须是稳定值：每次渲染都新建的 [] 会让这个效应反复触发 /auth/me。
+  const publicKey = publicPaths.join("|");
 
   useEffect(() => {
     let alive = true;
@@ -71,7 +79,7 @@ export function IdentityProvider({
         const data = (await res.json()) as Partial<Account> | null;
         if (data && typeof data.id === "string") {
           setAccount({ id: data.id, displayName: data.displayName ?? "" });
-        } else if (requireLogin && !publicPaths.includes(currentPath())) {
+        } else if (requireLogin && !isPublicPath(publicKey, currentPath())) {
           window.location.replace(loginHref);
         }
       })
@@ -82,7 +90,7 @@ export function IdentityProvider({
     return () => {
       alive = false;
     };
-  }, [loginHref, requireLogin, publicPaths]);
+  }, [loginHref, requireLogin, publicKey]);
 
   const readOnly = !invalid && account === null;
 

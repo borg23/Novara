@@ -24,6 +24,8 @@ const FULL_FEATURES: Features = {
   passwordAuth: true,
 };
 
+const EMPTY_PATHS: string[] = [];
+
 interface IdentityState {
   ready: boolean;
   account: Account | null;
@@ -47,7 +49,7 @@ export function IdentityProvider({
   loginHref,
   features = FULL_FEATURES,
   requireLogin = false,
-  publicPaths = [],
+  publicPaths = EMPTY_PATHS,
 }: {
   children: React.ReactNode;
   loginHref: string;

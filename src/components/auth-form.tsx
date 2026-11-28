@@ -42,7 +42,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
     <div className="mx-auto mt-16 max-w-sm">
       <div className="card p-6">
         <h1 className="mb-1 text-xl font-bold">{isLogin ? "登录" : "注册"}</h1>
-        <p className="mb-5 text-sm text-stone-500">
+        <p className="mb-5 text-sm text-muted">
           {isLogin ? "登录你的 Novara 账号" : "创建账号，开始管理作业与课程"}
         </p>
         <form onSubmit={submit} className="space-y-4">
@@ -90,7 +90,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
               minLength={6}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
           <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? "处理中…" : isLogin ? "登录" : "注册"}
           </button>

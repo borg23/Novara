@@ -20,6 +20,7 @@ import {
   defaultWidgetOrder,
   normalizeWidgetOrder,
 } from "./shared/widgets.ts";
+import { isTheme } from "./shared/theme.ts";
 
 const ROW_CAP = 5000;
 const BODY_CAP = 262144;
@@ -784,6 +785,36 @@ export function application(deps: AppDeps) {
             .eq("user_id", target.id)
         );
         return respond({ ok: true, columns, style, order });
+      },
+    },
+    {
+      pattern: /^\/settings$/,
+      allow: ["GET", "PUT"],
+      run: async (_matches, _url, request) => {
+        if (request.method === "GET") {
+          const target = await owner();
+          const found = await read(
+            db.from("user_settings").select("theme").eq("user_id", target.id).limit(1)
+          );
+          const row = found[0];
+          return respond(
+            { theme: row && isTheme(row.theme) ? row.theme : "system", ...(target.readOnly ? { readOnly: true } : {}) },
+            200,
+            target.readOnly
+          );
+        }
+        requireWriter();
+        const target = await owner();
+        const body = await readBody(request);
+        const theme = body.theme === undefined ? "system" : String(body.theme);
+        if (!isTheme(theme)) throw new AppFailure(400, "主题需为 light、dark 或 system");
+        const timestamp = deps.now().toISOString();
+        // 无 ON CONFLICT DO UPDATE：insertIfAbsent + update 两步，重复执行结果一致。
+        await write(db.from("user_settings").insertIfAbsent({ user_id: target.id, theme, updated_at: timestamp }, { onConflict: "user_id" }));
+        await write(
+          db.from("user_settings").update({ theme, updated_at: timestamp }).eq("user_id", target.id)
+        );
+        return respond({ ok: true, theme });
       },
     },
   ];

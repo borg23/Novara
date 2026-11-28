@@ -87,7 +87,7 @@ export default function Panel() {
   const hiddenWidgets = Object.keys(WIDGETS).filter((w) => shown(w) && !config.order.includes(w));
 
   if (loading) {
-    return <p className="py-12 text-center text-sm text-stone-400">面板加载中…</p>;
+    return <p className="py-12 text-center text-sm text-faint">面板加载中…</p>;
   }
 
   const dateStr = new Date().toLocaleDateString("zh-CN", {
@@ -101,7 +101,7 @@ export default function Panel() {
     <div>
       <div className="mb-5">
         <h1 className="text-2xl font-bold">你好，{account?.displayName || "同学"}</h1>
-        <p className="text-sm text-stone-500">{dateStr}</p>
+        <p className="text-sm text-muted">{dateStr}</p>
       </div>
       <IfWritable>
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -114,7 +114,7 @@ export default function Panel() {
           {editMode && (
             <>
               <div className="flex items-center gap-1 text-sm">
-                <span className="text-stone-500">列数</span>
+                <span className="text-muted">列数</span>
                 {[1, 2, 3].map((n) => (
                   <button
                     key={n}
@@ -126,7 +126,7 @@ export default function Panel() {
                 ))}
               </div>
               <div className="flex items-center gap-1 text-sm">
-                <span className="text-stone-500">样式</span>
+                <span className="text-muted">样式</span>
                 <button
                   className={config.style === "card" ? "btn-primary !px-2.5" : "btn-ghost !px-2.5"}
                   onClick={() => saveConfig({ style: "card" })}
@@ -147,7 +147,7 @@ export default function Panel() {
 
       {editMode && hiddenWidgets.length > 0 && (
         <div className="card mb-4 p-3">
-          <p className="mb-2 text-xs text-stone-500">点击添加组件：</p>
+          <p className="mb-2 text-xs text-muted">点击添加组件：</p>
           <div className="flex flex-wrap gap-2">
             {hiddenWidgets.map((w) => (
               <button
@@ -195,8 +195,8 @@ export default function Panel() {
               }}
               className={`${
                 isCard ? "card p-4" : "panel-flat"
-              } ${isDragging ? "opacity-50 outline-2 outline-dashed outline-indigo-400 outline-offset-2" : ""} ${
-                isDropTarget ? "bg-indigo-100/70 ring-2 ring-inset ring-indigo-500" : ""
+              } ${isDragging ? "opacity-50 outline-2 outline-dashed outline-accent outline-offset-2" : ""} ${
+                isDropTarget ? "bg-accent-soft/70 ring-2 ring-inset ring-accent" : ""
               }`}
             >
               <div
@@ -204,7 +204,7 @@ export default function Panel() {
                   editMode ? "cursor-grab" : ""
                 }`}
               >
-                <h2 className="text-sm font-semibold text-stone-700">{def.title}</h2>
+                <h2 className="text-sm font-semibold text-strong">{def.title}</h2>
                 {editMode && (
                   <div className="flex items-center gap-1">
                     <button
@@ -223,11 +223,11 @@ export default function Panel() {
                     >
                       ↓
                     </button>
-                    <span className="text-xs text-stone-400" title="拖拽排序">
+                    <span className="text-xs text-faint" title="拖拽排序">
                       拖拽排序
                     </span>
                     <button
-                      className="text-stone-400 hover:text-red-600"
+                      className="text-faint hover:text-danger"
                       title="移除组件"
                       onClick={() => saveConfig({ order: config.order.filter((x) => x !== w) })}
                     >
@@ -241,7 +241,7 @@ export default function Panel() {
           );
         })}
         {config.order.length === 0 && (
-          <p className="col-span-full py-8 text-center text-sm text-stone-400">
+          <p className="col-span-full py-8 text-center text-sm text-faint">
             面板是空的，点击「自定义面板」添加组件
           </p>
         )}

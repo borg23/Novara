@@ -8,6 +8,16 @@
       name="description"
       content="面向学生的作业与课程管理工具：作业、课程表、考试记录与组件化面板"
     />
+    <script>
+      try {
+        (function () {
+          var t = localStorage.getItem("novara-theme");
+          if (t === "dark" || ((!t || t === "system") && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+            document.documentElement.classList.add("dark");
+          }
+        })();
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

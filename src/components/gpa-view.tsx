@@ -107,36 +107,36 @@ export default function GpaView() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold">GPA 计算器</h1>
-      <p className="mb-4 text-sm text-stone-500">
+      <p className="mb-4 text-sm text-muted">
         记录课程学分与成绩，自动按学分加权换算 4.0 绩点，并估算学分情况与课程完成度。
       </p>
 
       {summary && (
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
           <div className="card p-4">
-            <p className="text-xs text-stone-500">当前 GPA（4.0 制）</p>
+            <p className="text-xs text-muted">当前 GPA（4.0 制）</p>
             <p className="mt-1 text-4xl font-bold">{summary.gpa === null ? "—" : summary.gpa.toFixed(2)}</p>
-            <p className="mt-1 text-xs text-stone-400">
+            <p className="mt-1 text-xs text-faint">
               {summary.gradedCredits > 0 ? `已计入 ${summary.gradedCredits} 学分` : "暂无有效成绩"}
             </p>
           </div>
           <div className="card p-4">
-            <p className="text-xs text-stone-500">已获学分 / 目标学分</p>
+            <p className="text-xs text-muted">已获学分 / 目标学分</p>
             <p className="mt-1 text-4xl font-bold">
               {summary.earnedCredits}
-              <span className="text-xl font-normal text-stone-400"> / {summary.targetCredits}</span>
+              <span className="text-xl font-normal text-faint"> / {summary.targetCredits}</span>
             </p>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-200">
-              <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${pct}%` }} />
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-line">
+              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
             </div>
-            <p className="mt-1 text-xs text-stone-400">完成度 {pct}%</p>
+            <p className="mt-1 text-xs text-faint">完成度 {pct}%</p>
           </div>
           <div className="card p-4">
-            <p className="text-xs text-stone-500">课程完成度估算</p>
+            <p className="text-xs text-muted">课程完成度估算</p>
             <p className="mt-1 text-4xl font-bold">
               {summary.completion === null ? "—" : `${Math.round(summary.completion * 100)}%`}
             </p>
-            <p className="mt-1 text-xs text-stone-400">
+            <p className="mt-1 text-xs text-faint">
               计划中学分共 {summary.plannedCredits}，已完成 {summary.earnedCredits}
             </p>
           </div>
@@ -157,23 +157,23 @@ export default function GpaView() {
             选择文件
           </button>
         </div>
-        <p className="text-xs text-stone-500">
+        <p className="text-xs text-muted">
           CSV 表头支持：课程名 / 学分 / 成绩 / 状态 / 学期；JSON 为课程对象数组（name, credits, grade, status,
           semester）。成绩支持百分制或等级（A、优、良…）。上传后先预览分析，确认后才导入。
         </p>
-        {uploadMsg && <p className="mt-2 text-sm text-indigo-700">{uploadMsg}</p>}
+        {uploadMsg && <p className="mt-2 text-sm text-accent-strong">{uploadMsg}</p>}
 
         {preview && (
-          <div className="mt-3 border-t border-stone-100 pt-3">
+          <div className="mt-3 border-t border-line-soft pt-3">
             <p className="mb-2 text-sm">
               预览：共 {preview.rows.length} 条，预览 GPA{" "}
               <span className="font-bold">{preview.summary.gpa === null ? "—" : preview.summary.gpa.toFixed(2)}</span>
-              {preview.hasError && <span className="ml-2 text-red-600">存在解析错误，错误行将被跳过</span>}
+              {preview.hasError && <span className="ml-2 text-danger">存在解析错误，错误行将被跳过</span>}
             </p>
-            <div className="max-h-56 overflow-y-auto rounded-lg border border-stone-200">
+            <div className="max-h-56 overflow-y-auto rounded-lg border border-line">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-stone-50">
-                  <tr className="text-left text-stone-500">
+                <thead className="sticky top-0 bg-surface-soft">
+                  <tr className="text-left text-muted">
                     <th className="px-2 py-1.5">课程名</th>
                     <th className="px-2 py-1.5">学分</th>
                     <th className="px-2 py-1.5">成绩</th>
@@ -184,13 +184,13 @@ export default function GpaView() {
                 </thead>
                 <tbody>
                   {preview.rows.map((r, i) => (
-                    <tr key={i} className="border-t border-stone-100">
+                    <tr key={i} className="border-t border-line-soft">
                       <td className="px-2 py-1.5">{r.name}</td>
                       <td className="px-2 py-1.5">{r.credits}</td>
                       <td className="px-2 py-1.5">{r.grade === null ? "—" : r.grade}</td>
                       <td className="px-2 py-1.5">{STATUS_TEXT[r.status] ?? r.status}</td>
                       <td className="px-2 py-1.5">{r.semester}</td>
-                      <td className="px-2 py-1.5 text-red-600">{r.error ?? ""}</td>
+                      <td className="px-2 py-1.5 text-danger">{r.error ?? ""}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -206,13 +206,13 @@ export default function GpaView() {
       <div className="card overflow-x-auto p-4">
         <p className="mb-3 text-sm font-semibold">课程成绩明细（可直接修改）</p>
         {courses.length === 0 ? (
-          <p className="py-4 text-center text-sm text-stone-400">
+          <p className="py-4 text-center text-sm text-faint">
             暂无课程，请先在「课程」页创建，或通过上方上传导入
           </p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-stone-500">
+              <tr className="text-left text-xs text-muted">
                 <th className="py-2 pr-2">课程</th>
                 <th className="py-2 pr-2">学分</th>
                 <th className="py-2 pr-2">成绩</th>
@@ -222,7 +222,7 @@ export default function GpaView() {
             </thead>
             <tbody>
               {courses.map((c) => (
-                <tr key={c.id} className="border-t border-stone-100">
+                <tr key={c.id} className="border-t border-line-soft">
                   <td className="py-1.5 pr-2 font-medium">{c.name}</td>
                   <td className="py-1.5 pr-2">
                     <input
@@ -259,7 +259,7 @@ export default function GpaView() {
                       <option value="completed">已完成</option>
                     </select>
                   </td>
-                  <td className="py-1.5 pr-2 text-stone-500">{c.semester || "—"}</td>
+                  <td className="py-1.5 pr-2 text-muted">{c.semester || "—"}</td>
                 </tr>
               ))}
             </tbody>

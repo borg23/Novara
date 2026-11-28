@@ -128,6 +128,12 @@ CREATE TABLE app.widget_configs (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE app.user_settings (
+  user_id    uuid PRIMARY KEY REFERENCES app.users (id) ON DELETE CASCADE,
+  theme      text NOT NULL DEFAULT 'system' CHECK (theme IN ('light', 'dark', 'system')),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- ===== 本期不建的表 =====
 
 -- app.sessions（令牌摘要 / 过期 / 撤销）与 app.auth_limiter（固定窗口限流）属于自建口令形态。

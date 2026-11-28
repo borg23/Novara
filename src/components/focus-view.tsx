@@ -56,7 +56,7 @@ export default function FocusView() {
   }, []);
 
   if (!data) {
-    return <p className="py-12 text-center text-sm text-stone-400">加载中…</p>;
+    return <p className="py-12 text-center text-sm text-faint">加载中…</p>;
   }
 
   const maxSec = Math.max(1, ...data.perAssignment.map((p) => p.totalSec));
@@ -64,21 +64,21 @@ export default function FocusView() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold">专注记录</h1>
-      <p className="mb-4 text-sm text-stone-500">
+      <p className="mb-4 text-sm text-muted">
         在面板首页使用「专注计时」组件，计时结束后会自动记录到这里。
       </p>
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <div className="card p-4">
-          <p className="text-xs text-stone-500">今日专注总时长</p>
+          <p className="text-xs text-muted">今日专注总时长</p>
           <p className="mt-1 text-4xl font-bold">{fmt(data.todayTotalSec)}</p>
         </div>
         <div className="card p-4">
-          <p className="text-xs text-stone-500">累计专注</p>
+          <p className="text-xs text-muted">累计专注</p>
           <p className="mt-1 text-4xl font-bold">
             {fmt(data.records.reduce((sum, r) => sum + r.durationSec, 0))}
           </p>
-          <p className="mt-1 text-xs text-stone-400">共 {data.records.length} 次记录</p>
+          <p className="mt-1 text-xs text-faint">共 {data.records.length} 次记录</p>
         </div>
       </div>
 
@@ -90,11 +90,11 @@ export default function FocusView() {
               <div key={p.assignmentId ?? "none"}>
                 <div className="mb-0.5 flex justify-between text-xs">
                   <span className="font-medium">{p.title ?? "未绑定作业"}</span>
-                  <span className="text-stone-500">{fmt(p.totalSec)}</span>
+                  <span className="text-muted">{fmt(p.totalSec)}</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-stone-200">
+                <div className="h-2 overflow-hidden rounded-full bg-line">
                   <div
-                    className="h-full rounded-full bg-indigo-500"
+                    className="h-full rounded-full bg-accent"
                     style={{ width: `${Math.max(4, Math.round((p.totalSec / maxSec) * 100))}%` }}
                   />
                 </div>
@@ -107,11 +107,11 @@ export default function FocusView() {
       <div className="card overflow-x-auto p-4">
         <p className="mb-3 text-sm font-semibold">历史记录</p>
         {data.records.length === 0 ? (
-          <p className="py-4 text-center text-sm text-stone-400">还没有专注记录</p>
+          <p className="py-4 text-center text-sm text-faint">还没有专注记录</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-stone-500">
+              <tr className="text-left text-xs text-muted">
                 <th className="py-2 pr-2">开始时间</th>
                 <th className="py-2 pr-2">时长</th>
                 <th className="py-2 pr-2">绑定作业</th>
@@ -120,11 +120,11 @@ export default function FocusView() {
             </thead>
             <tbody>
               {data.records.map((r) => (
-                <tr key={r.id} className="border-t border-stone-100">
-                  <td className="py-1.5 pr-2 text-stone-500">{fmtTime(r.startedAt)}</td>
+                <tr key={r.id} className="border-t border-line-soft">
+                  <td className="py-1.5 pr-2 text-muted">{fmtTime(r.startedAt)}</td>
                   <td className="py-1.5 pr-2 font-medium">{fmt(r.durationSec)}</td>
                   <td className="py-1.5 pr-2">{r.assignmentTitle ?? "未绑定"}</td>
-                  <td className="py-1.5 pr-2 text-stone-500">{r.note || "—"}</td>
+                  <td className="py-1.5 pr-2 text-muted">{r.note || "—"}</td>
                 </tr>
               ))}
             </tbody>

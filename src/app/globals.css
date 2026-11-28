@@ -2,6 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-paper: 245 242 235;
+  --color-surface: 255 255 255;
+  --color-surface-soft: 250 250 249;
+  --color-surface-hover: 245 245 244;
+  --color-ink: 31 41 55;
+  --color-strong: 68 64 60;
+  --color-muted: 87 83 78;
+  --color-faint: 168 162 158;
+  --color-line: 231 229 228;
+  --color-line-strong: 214 211 209;
+  --color-line-soft: 245 245 244;
+  --color-accent: 79 70 229;
+  --color-accent-strong: 67 56 202;
+  --color-accent-solid: 79 70 229;
+  --color-accent-solid-strong: 67 56 202;
+  --color-accent-soft: 238 242 255;
+  --color-danger: 220 38 38;
+  --color-danger-solid: 220 38 38;
+  --color-danger-solid-strong: 185 28 28;
+  --color-overlay: 0 0 0;
+}
+
+.dark {
+  --color-paper: 28 25 23;
+  --color-surface: 41 37 36;
+  --color-surface-soft: 41 37 36;
+  --color-surface-hover: 68 64 60;
+  --color-ink: 231 229 228;
+  --color-strong: 214 211 209;
+  --color-muted: 168 162 158;
+  --color-faint: 120 113 108;
+  --color-line: 68 64 60;
+  --color-line-strong: 87 83 78;
+  --color-line-soft: 41 37 36;
+  --color-accent: 129 140 248;
+  --color-accent-strong: 165 180 252;
+  --color-accent-solid: 79 70 229;
+  --color-accent-solid-strong: 67 56 202;
+  --color-accent-soft: 49 46 129;
+  --color-danger: 248 113 113;
+  --color-danger-solid: 220 38 38;
+  --color-danger-solid-strong: 185 28 28;
+  --color-overlay: 0 0 0;
+}
+
 @layer base {
   body {
     @apply bg-paper text-ink;
@@ -11,28 +57,28 @@
 
 @layer components {
   .card {
-    @apply rounded-xl border border-stone-200 bg-white shadow-sm;
+    @apply rounded-xl border border-line bg-surface shadow-sm;
   }
   .panel-flat {
-    @apply rounded-lg border border-stone-200 bg-white p-4;
+    @apply rounded-lg border border-line bg-surface p-4;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-indigo-600 text-white hover:bg-indigo-700;
+    @apply btn bg-accent-solid text-white hover:bg-accent-solid-strong;
   }
   .btn-ghost {
-    @apply btn border border-stone-300 bg-white text-stone-700 hover:bg-stone-100;
+    @apply btn border border-line-strong bg-surface text-strong hover:bg-surface-hover;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply btn bg-danger-solid text-white hover:bg-danger-solid-strong;
   }
   .input {
-    @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200;
+    @apply w-full rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent-soft;
   }
   .label {
-    @apply mb-1 block text-sm font-medium text-stone-600;
+    @apply mb-1 block text-sm font-medium text-muted;
   }
   .badge {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;

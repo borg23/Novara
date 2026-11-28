@@ -48,7 +48,7 @@ npm run dev:web        # 终端 2：Vite 壳，把 /functions/v1/app 代理到 8
 
 打开 http://127.0.0.1:5173 就是部署形态的行为：未登录读到的是公开示例数据，写控件隐藏。切换本地身份（账号 A / 账号 B / 未登录 / 上下文非法）访问 http://127.0.0.1:8000/__local 。
 
-静态产物（站点根为 `out/web/index.html`）用 `npm run build:web`；Function 的提交前类型检查用 `deno check functions/index.ts`，两者不可互替。
+静态产物（`out/web/index.html` 与同目录 `assets/`，即站点根；`webDirectory` 取 `out/web`）用 `npm run build:web`；Function 的提交前类型检查用 `deno check functions/index.ts`，两者不可互替。
 
 ## 环境变量
 

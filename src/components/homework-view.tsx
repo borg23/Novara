@@ -251,7 +251,7 @@ function AssignmentForm({
       title,
       description,
       dueDate: dueDate || null,
-      courseId: courseId === "" ? null : Number(courseId),
+      courseId: courseId === "" ? null : courseId,
       priority,
     };
     const res = await apiFetch(initial ? `/assignments/${initial.id}` : "/assignments", {
@@ -416,7 +416,7 @@ function ExamForm({
         examDate: examDate || null,
         score: score === "" ? null : Number(score),
         note,
-        courseId: courseId === "" ? null : Number(courseId),
+        courseId: courseId === "" ? null : courseId,
       }),
     });
     if (!res.ok) {

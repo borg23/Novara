@@ -78,7 +78,7 @@
 - **身份方案**：平台 Qoder 上下文作为凭证，**用户记录与业务数据仍由本库 `app.users` 持有**（可解绑、可导出、可停用）。本期不建口令、不建会话表与限流表。理由：自建身份提供方在主流架构文档中被列为反模式，平台已提供 IdP，不属「别无选择」；同时避免引入「按 email / 名称自动关联账户」这类账号接管风险面。
 - **不做口令不等于做不到**：#26 实测显示应用 Cookie 在**未开启** `forwardApplicationCredentials` 时就已到达 Function 原始 header。所以这条决策的依据不是能力受限，而是边际收益：「评委没 Qoder 账号也能看」已由**匿名只读样例**覆盖（约 30 行）；「开发时切换用户测隔离」已由**本地身份 fixture**覆盖（第九节）。剩下的唯一增量是「无 Qoder 账号也能**创建**数据」——若它成为硬需求，按 expand 加回：约 350–400 行 Function、3 张表（`sessions` / `auth_limiter` / `users` 口令列）、约 1 人日，并且必须同时实现「绑定只能在已认证会话内显式发起」这条防接管规则。
 
-- **前端形态（已定，2026-11-25）**：部署形态改用 **Vite + React 静态壳**（`web/`），Next.js 形态保留用于本地开发与演示。判据不是偏好，而是三条硬事实：① 静态导出与 18 个 route handler 不能共存于一个产物；② `next/link` / `useRouter` / `usePathname` 在静态壳里没有对应物；③ 本地函数薄壳要求 Vite 代理 `/functions/v1/app`。代价是迁移期仓库里有两套页面壳，共用同一批 `src/components` 与 `src/lib`。产物落在 `out/`，站点根是 `out/web/index.html`（`webDirectory` 取 `out/web`）。
+- **前端形态（已定，2026-11-25）**：部署形态改用 **Vite + React 静态壳**（`web/`），Next.js 形态保留用于本地开发与演示。判据不是偏好，而是三条硬事实：① 静态导出与 18 个 route handler 不能共存于一个产物；② `next/link` / `useRouter` / `usePathname` 在静态壳里没有对应物；③ 本地函数薄壳要求 Vite 代理 `/functions/v1/app`。代价是迁移期仓库里有两套页面壳，共用同一批 `src/components` 与 `src/lib`。产物落在 `out/web/`，`index.html` 与 `assets/` 同级，站点根是 `out/web/index.html`（`webDirectory` 取 `out/web`，无需引用目录外的文件）。
 - **`/exams` 归阶段一**：8 张表里已有 `exams`，作业页的「考试记录」标签是既有可见功能，隐藏它等于砍掉已交付能力；实现成本是两个 handler。
 - **匿名样例的落地方式**：Function 内以固定 uuid JIT 建「示例同学」并写入样例课程 / 课表 / 作业 / 任务 / 考试，**不改审批用的 `docs/sites-schema.sql`**；样例写入失败不放大成 5xx，只让访客读到空列表。
 

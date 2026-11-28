@@ -38,7 +38,7 @@ npm run dev            # http://localhost:3000
 | 生产启动 | `npm start` | 可用 |
 | 本地函数薄壳 | `npm run dev:function` | 可用；数据落 `dev/.data.json`，身份切换页 <http://127.0.0.1:8000/__local> |
 | 开发（Sites 静态壳） | `npm run dev:web` | 可用；需先起 `npm run dev:function`，Vite 把 `/functions/v1/app` 代理到 `127.0.0.1:8000` |
-| 构建（Sites 静态壳） | `npm run build:web` | 可用；先 `tsc -p web` 类型检查，再产出 `out/`（`out/web/index.html` 为站点根） |
+| 构建（Sites 静态壳） | `npm run build:web` | 可用；先 `tsc -p web` 类型检查，再产出 `out/web/`（`index.html` 与 `assets/` 同级，`webDirectory` 取 `out/web`） |
 | 测试 | 无 | 仓库没有测试框架，也没有测试用例。**不要臆造 `npm test`** |
 | Lint | 无 | 未配置 ESLint / Prettier，也没有配置文件 |
 | Function 类型检查 | `deno check functions/index.ts` | 仅用于部署形态的 Edge Function；本机 Deno 2.9.8 已就绪。**`npm run build` 不覆盖 Function** |
